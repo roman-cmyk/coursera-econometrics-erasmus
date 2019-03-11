@@ -1,0 +1,93 @@
+---
+title: 'Week 2: Multiple Regression, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r setup and load packages, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(stargazer)
+library(tidyverse)
+```
+
+```{r load data for exercise, include=FALSE}
+TrainExer21 <- read_tsv("../../data/TrainExer21.txt")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 2.1  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer21`and requires a computer.  
+* The dataset `TrainExer21` is available on the website.  
+  
+##Questions  
+  
+(a) Use dataset `TrainExer21` to regress log-wage on a constant and the gender dummy `Female`, and check the result presented in Lecture 2.1 that $log(Wage) = 4.73 - 0.25Female + e$.  
+
+(b) Let $e$ be the series of residuals of the regression in part (a). Perform two regressions:
+
+    (i) $e$ on a constant and education;
+    (ii) $e$ on a constant and the part-time job dummy.   
+    
+(c) Comment on the outcomes of regressions (i) and (ii) of part (b).  
+  
+***
+\pagebreak  
+  
+##Answers
+
+### (a) Use dataset `TrainExer21` to regress log-wage on a constant and the gender dummy `Female`, and check the result presented in Lecture 2.1 that $log(Wage) = 4.73 - 0.25Female + e$.  
+  
+We can verify the results from the lecture by quickly running a binary regression on `LogWage` by `Female`:    
+```{r lm on LogWage by Female, echo=FALSE}
+LogWage_Female <- lm(LogWage~Female, data = TrainExer21)
+```
+ 
+```{r stargazer LogWage~Female table, results="asis", echo = FALSE}
+stargazer(LogWage_Female, header = FALSE, omit.table.layout = "s")
+```
+We can see that the results are the same, with the intercept $\beta_0$ (or $\alpha$ if you prefer) term = 4.734 with a Standard Error = 0.024.  
+  
+Likewise, we can see that the $\beta_1$ value = -0.251, with a Standard Error = .040.  
+  
+    
+### (b) Let $e$ be the series of residuals of the regression in part (a). Perform two regressions:  
+  
+Using the residuals from this regression, we can now run two separate regressions to see if the error terms correlate with other variables in our dataset.  
+  
+* **(i) $e$ on a constant and education;**
+```{r lm LogWage error by Educ, echo = FALSE}
+e_education <- lm(residuals(LogWage_Female)~Educ, data = TrainExer21)
+```
+
+```{r stargazer error~education, results="asis", echo = FALSE}
+stargazer(e_education, header = FALSE, omit.table.layout = "s")
+```
+  
+* **(ii) $e$ on a constant and the part-time job dummy.**   
+```{r lm LogWage error by Parttime, echo = FALSE}
+e_parttime <- lm(residuals(LogWage_Female)~Parttime, data = TrainExer21)
+```
+
+```{r stargazer error~parttime, results="asis", echo = FALSE}
+stargazer(e_parttime, header = FALSE, omit.table.layout = "s")
+```
+  
+       
+### (c) Comment on the outcomes of regressions (i) and (ii) of part (b).  
+  
+If the residual error from our first regression in part *a* can be thought of as wage difference between men and women that cannot be explained by our original regressor variable, `Female`, then the regressions we performed on these error terms in part *b* hint at what portion of this unexplained wage difference can be explained by other variables.  
+  
+Specifically, what the first regression we performed in part *b* says is that an extra level of Education has a 0.218 (22%) effect on the unexplained wage difference between men and women.  In other words, higher education levels leads to higher wages.
+  
+Similarly, in the second regression, we see that having a Part-timejob has an effect of 0.099 (or 10%) on the unexplained wage difference between men and women.  This is unexpected, as we would have expected lower-wages for part-time work.  
+  
+The results of both of these regressions on our residual error from part *a* suggest that these additional variables should be added to our model for predicting differences in `LogWage`.  

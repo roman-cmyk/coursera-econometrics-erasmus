@@ -1,0 +1,96 @@
+---
+title: 'Week 2: Multiple Regression, Training Exercises'
+subtitle: <h3>Coursera/Erasumus U., Econometric Methods and Applications</h3>
+author: "Anthony Nguyen"
+output:
+  pdf_document: 
+    keep_tex: no
+    includes:
+      in_header: preamble_2.tex
+  html_document:
+    theme: cosmo
+---
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 2.4.2 
+  
+##Notes:  
+  
++ For this exercise, you need the formulas for the F-test and t-test as discussed in Lecture 2.4.2.    
+  
+##Questions  
+  
+Consider the unrestricted multiple regression model $y = X_1\beta_1 + X_2\beta_2 + \varepsilon$. If we impose the null hypothesis that $\beta_2 = 0$, we get the restricted model $y = X_1\beta_1 + \varepsilon$.  
+  
+###(a) Suppose that both the restricted and the unrestricted model contain a constant term. Then prove that:     
+$$
+F = \frac{(R_1^2 - R_0'2)/g}{(1 - R_1^2)/(n-k)}
+$$
+where $R_0^2$ and $R_1^2$ are, respectively, the R-squared of of the restricted and unrestricted model.  
+        
+###(b) Suppose that we test for a single restriction$H_0: \beta_j = 0$, so that $g = 1$.  Then prove that $F = t^2$.    
+  
+***
+\pagebreak  
+  
+##Answers    
+    
+Consider the unrestricted multiple regression model $y = X_1\beta_1 + X_2\beta_2 + \varepsilon$. If we impose the null hypothesis that $\beta_2 = 0$, we get the restricted model $y = X_1\beta_1 + \varepsilon$.  
+  
+###(a) Suppose that both the restricted and the unrestricted model contain a constant term. Then prove that:     
+$$
+F = \frac{(R_1^2 - R_0'2)/g}{(1 - R_1^2)/(n-k)}
+$$
+where $R_0^2$ and $R_1^2$ are, respectively, the R-squared of of the restricted and unrestricted model.  
+  
+The F-test is expressed in terms of $e'e$, and we need an expression of the F-test in terms of $R^2$.  
+
+$R^2$ can be expressed in terms of $e'e$ for models with a constant term, such that:
+
+\begin{align*}
+R^2 &= 1 - \frac{e'e}{SST} &&\text{where $SST = \sum_{i=1}^n (y_i - \bar{y})2$} \\  
+  e'e &= SST(1-R^2) &&\text{re-written} \\
+  e_0'e_0 &= SST(1-R_0^2) &&\text{restricted} \\  
+  e_1'e_1 &= SST(1-R_1'2) &&\text{unrestricted}
+\end{align*}
+
+Finally, we can show that the F-statistic is equal to:  
+
+\begin{align*}  
+F &= \frac{(e_0'e_0 - e_1'e_1)/g}{e_1'e_1/(n-u)} = \frac{(SST(1-R_0^2) - SST(1-R_1'2))/g}{SST(1-R_1^2)/(n-u)} \\
+  & = \frac{(R_1^2-R_0^2)/g}{(1-R_1^2)/(n-u)}  
+\end{align*}
+  
+###(b) Suppose that we test for a single restriction$H_0: \beta_j = 0$, so that $g = 1$.  Then prove that $F = t^2$.  
+  
+The t-statistic is defined as:  
+$$
+t = \frac{b_j}{s \sqrt{a_jj}} \quad \text{where $a_{jj}$ is the $(j,j)^{th}$ element of $(X'X)^{-1}$}
+$$
+
+In the derivation of the F-test, the null hypothesis, $H_0: R\beta = r$ can be tested using:
+$$
+F = \frac{1}{s^2}(R\beta-r)'V^{-1}(R\beta-r)/g \quad \text{with $V=R(X'X)^{-1}R'$}
+$$
+Here we test the null hypothesis $H0: \beta_j = 0$, with $g = 1$ restriction, and with $R = (0\dots0\; 1\; 0\;\dots0)$ (the $j^{th}$ unit vector), and $r=0$.  
+
+Then:  
+$$
+V = R(X'X)^{-1} = (0\dots0\; 1\; 0\;\dots0) (X'X)^{-1} \begin{pmatrix} 
+  0 \\  
+  \vdots \\  
+  0 \\  
+  1 \\  
+  0 \\  
+  \vdots \\  
+  0  
+  \end{pmatrix}  
+  = a_{jj}
+$$
+
+If we substitute this into the definition of the F-test, then we find that:  
+$$
+F = \frac{1}{s^2}(b_j-0)' \cdot \frac{1}{a_{jj}}(b_j-0) = \frac{b_j^2}{s^2a_{jj}} = t^2
+$$

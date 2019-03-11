@@ -1,0 +1,87 @@
+---
+title: 'Week 3: Model Specification, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+```
+
+```{r load data for exercise, include=FALSE}
+TrainExer33 <- read_excel("../../data/TrainExer 3-3.xlsx")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 3.3  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer33`and requires a computer.  
+* The dataset `TrainExer33` is [available on the website](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Module%203/TrainExer%203-3.xlsx).  
+  
+##Questions  
+  
+(a) In Lecture 3.1 we took the first difference of the logarithmic transformed series. These two transformations combined provide the interpretation of being an (approximate) growth rate. Show this. *Hint*: Use the definition of the first difference, $log(a) - log(b) = log(a/b), log(a/b) = log(1 + (a-b)/b)$, and that $log(1 + x) \approx x$ for $x$ small. 
+
+(b) Use dataset `TrainExer33` to regress the change in the log of the S&P500 index on a constant, the book-to-market ration, and the square of the book-to-market ratio. Is the relationship between the index and book-to-market quadratic?    
+    
+(c) Define a dummy that is 1 for 1980 and all following years. Regress the change in the log of the S&P500 index on a constant, the book-to-market ration, and an interaction between the book-to-market ration and the just-defined dummy. Is the relationship between the index and book-to-market stable over the pre- and post-1980 period?   
+     
+***
+\pagebreak  
+  
+##Answers
+
+### (a) In Lecture 3.1 we took the first difference of the logarithmic transformed series. These two transformations combined provide the interpretation of being an (approximate) growth rate. Show this. *Hint*: Use the definition of the first difference, $log(a) - log(b) = log(a/b), log(a/b) = log(1 + (a-b)/b)$, and that $log(1 + x) \approx x$ for $x$ small.  
+  
+\begin{align*}
+\Delta (y_i) &= log(y_i) - log(y_i - 1) \\
+  &= log(\frac{y_i}{y_i - 1}) \\
+  &= log(1 + \frac{y_i - y_i - 1}{y_i - 1}) \\
+  &= log(1 + \frac{\Delta y_i}{y_i - 1}) \\
+  &\approx \frac{\Delta y_i}{y_i - 1}
+  \end{align*}
+
+### (b) Use dataset `TrainExer33` to regress the change in the log of the S&P500 index on a constant, the book-to-market ratio, and the square of the book-to-market ratio. Is the relationship between the index and book-to-market quadratic?  
+  
+Similar to what we did in Exercise 3.1, we can start by  making the relevant transformations to our variables and adding them to our dataframe:  
+```{r calculate change in log_Index and square BookMarket, echo = TRUE}
+
+TrainExer33 <- TrainExer33 %>% mutate(log_Index = log(Index), 
+                                      diff_log_Index = c(NA, diff(log_Index, lag=1)), 
+                                      BookMarket2 = BookMarket^2)
+```
+Now we can run the regression by calling:
+```{r regress diff_log_Index~BookMarket + Bookmarket2, echo = TRUE}
+
+mod <- lm(diff_log_Index~BookMarket+BookMarket2, data = TrainExer33)
+
+summary(mod)  
+```
+Compared to the regression we ran in Exercise 3.1 (where we did not include the squared BookMarket term), all of the coefficients in this regression have lower t-scores, and none of them are statistically significant. The relationship between Index and BookMarket does not appear to be quadratic.  
+   
+### (c) Define a dummy that is 1 for 1980 and all following years. Regress the change in the log of the S&P500 index on a constant, the book-to-market ratio, and an interaction between the book-to-market ratio and the just-defined dummy. Is the relationship between the index and book-to-market stable over the pre- and post-1980 period?    
+Here, we first define the dummy variable for 1980 as indicated:
+```{r create dummy variable and interaction term, echo = TRUE}
+TrainExer33 <- TrainExer33 %>% mutate(Year_1980 = ifelse(Year>=1980, 1, 0),
+                                      BookYear1980 = BookMarket*Year_1980)
+```
+Now, we can regress the change in log_Index with BookMarket and the interaction between BookMarket and the dummy for Year_1980:  
+```{r regress diff_log_Index~BookMarket + BookMarket*Year_1980, echo = TRUE}
+
+mod2 <- lm(diff_log_Index~BookMarket + BookYear1980, data = TrainExer33)
+
+summary(mod2)  
+```
+From our regression summary, we can see that the coefficient for our interaction term is 0.049, with a t-score of 0.563, indicating it is not statistically significant. This would imply that there is not significant change between the index and the book-to-market depending on whether the year is before or after 1980, meaning that the relationship is stable over time.  
+

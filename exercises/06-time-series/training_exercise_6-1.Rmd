@@ -1,0 +1,149 @@
+---
+title: 'Week 6: Time Series, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+library(car)
+```
+
+```{r load data for exercise, include=FALSE}
+
+TrainExer61 <- read_excel("../../data/TrainExer61.xlsx")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 6.1  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer61`and requires a computer.  
+* The dataset `TrainExer61` is [available on the website](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Module%206/TrainExer61.xlsx).  
+  
+##Questions  
+  
+The datafile `TrainExer61` contains values of four series of length 250. Two of these series are uncorrelated white noise series denoted by $\varepsilon_{xt}$ and $\varepsilon_{yt}$, where both variables are NID(0,1), that is, normally and independently distributed standard normal random variables. The other two series are so-called random walks constructed from these two white noise series by $x_t = x_{t-1} + \varepsilon_{xt}$ and $y_t = y_{t-1} + \varepsilon_{yt}$, with starting values $x_1 = 0$ and $y_1 = 0$.  
+  
+As $\varepsilon_{xt}$ and $\varepsilon_{yt}$ are independent for all values of $t$ and $s$, the same holds true for all values of $x_t$ and $y_s$. The purpose of this exercise is to experience that, nonetheless, the regression of $y$ on $x$ indicates a highly significant relation between $y$ and $x$x if evaluated by standard regression tools. This kind of result is called 'spurious regression' and is caused by the trending nature of the variables $x$ and $y$. The lesson we learn is that standard regression tools are not applicable if the variables contain trends similar to those of the random walks considered here.  
+  
+(a) Use dataset `TrainExer61` to make the following graphs: the time series plot of $x_t$ against time $t$, the time series of plot $y_t$ against time $t$, and the scatter plot of $y_t$ against $x_t$. What conclusion could you draw from these three graphs?  
+  
+(b) To check that the series $\varepsilon_{xt}$ and $\varepsilon_{yt}$ are uncorrelated, regress $\varepsilon_{yt}$ on a constant and $\varepsilon_{xt}$. Report the t-value and p-value of the slope coefficient.  
+  
+(c) Extend the analysis of part(b) by regressing $\varepsilon_{yt}$ on a constant, $\varepsilon_{xt}$ and three lagged values of $\varepsilon_{yt}$ and of $\varepsilon_{xt}$. Perform the F-test for the joint insignificance of the seven parameters of $\varepsilon_{xt}$ and the three lags of $\varepsilon_{xt}$ and $\varepsilon_{yt}$. Report the degrees of freedom of the F-test and the numerical outcome of this test, and draw your conclusion. *Note:* The relevant 5% critical value is 2.0.  
+  
+(d) Regress $y$ on a constant and $x$. Report the t-value and p-value of the slope coefficient. What conclusion would you be tempted to draw if you did not know how the data were generated? 
+  
+(e) Let $e_t$ be the residuals of the regression of part (d). Regress $e_t$ on a constant and the one-period lagged residual $e_{t-1}$. What standard assumption of regression is clearly violated for the regression in part (d)?  
+  
+***
+\pagebreak  
+  
+##Answers
+  
+### (a) Use dataset `TrainExer61` to make the following graphs: the time series plot of $x_t$ against time $t$, the time series of plot $y_t$ against time $t$, and the scatter plot of $y_t$ against $x_t$. What conclusion could you draw from these three graphs?   
+```{r plot x_t~t, y_t~t, y_t~x_t, echo = FALSE}
+
+# add column t to dataframe
+TrainExer61 <- TrainExer61 %>% mutate(t = 1:nrow(TrainExer61))
+
+# plot x_t~t
+plot1 <- TrainExer61 %>% ggplot(aes(y = X, x = t)) + 
+  geom_point(color="red") + 
+  geom_line(color= "red") +
+  ggtitle("x_t ~ t")
+
+# plot y_t~t
+plot2 <- TrainExer61 %>% ggplot(aes(y = Y, x = t)) + 
+  geom_point(color="blue") + 
+  geom_line(color= "blue") +
+  ggtitle("y_t ~ t")
+
+# plot y_t~x_t
+plot3 <- TrainExer61 %>% ggplot(aes(y = Y, x = X)) + 
+  geom_point(color="green") + 
+  geom_line(color= "green") +
+  ggtitle("y_t ~ x_t")
+
+# display plot 1 & 2
+plot_grid(plot1, plot2)
+
+# display plot 3
+plot3  
+```
+Looking at the three graphs, we can see that the first two graphs move randomly up and down, are examples of "random walk".  
+  
+In the third graph, when we look at the graph of $y_t$ against $x_t$, it looks like there is a negative correlation between the two variables, even though we know this is **not** the case.  
+  
+### (b) To check that the series $\varepsilon_{xt}$ and $\varepsilon_{yt}$ are uncorrelated, regress $\varepsilon_{yt}$ on a constant and $\varepsilon_{xt}$. Report the t-value and p-value of the slope coefficient.  
+  
+```{r regress EPSY~EPSX, echo = FALSE}
+
+mod1 <- lm(EPSY~EPSX, data = TrainExer61)
+
+summary(mod1)$coefficients  
+```
+After performing the regression, we can see that the regression $\varepsilon_{xt}$ has the following values:  
+t-value = `r round(summary(mod1)$coefficients[2,3], 3)`  
+p-value = `r round(summary(mod1)$coefficients[2,4], 3)`  
+  
+### (c) Extend the analysis of part(b) by regressing $\varepsilon_{yt}$ on a constant, $\varepsilon_{xt}$ and three lagged values of $\varepsilon_{yt}$ and of $\varepsilon_{xt}$. Perform the F-test for the joint insignificance of the seven parameters of $\varepsilon_{xt}$ and the three lags of $\varepsilon_{xt}$ and $\varepsilon_{yt}$. Report the degrees of freedom of the F-test and the numerical outcome of this test, and draw your conclusion. *Note:* The relevant 5% critical value is 2.0.    
+  
+Here, the question is asking us to perform the following regression:
+$$
+\varepsilon_{yt} = \text{constant} + \gamma_1 \varepsilon_{xt} + \gamma_2 \varepsilon_{xt-1} + \gamma_3 \varepsilon_{xt - 2} + \gamma_4 \varepsilon_{xt-3} + \gamma_5 \varepsilon_{yt-1} + \gamma_6 \varepsilon_{yt-2} + \gamma_7 \varepsilon_{yt-3}
+$$  
+```{r regress EPSY~EPSX+lags, echo = FALSE}
+
+mod2 <- lm(EPSY~EPSX+lag(EPSX,1)+lag(EPSX,2)+lag(EPSX,3)+
+             lag(EPSY,1)+lag(EPSY,2)+lag(EPSY,3), data = TrainExer61)
+summary(mod2)  
+```
+The F-test for the joint insignificance of the 7 parameters would test to see if: 
+$$
+H_0 = \gamma_1 = \gamma_2 = \gamma_3 = \gamma_4 = \gamma_5 = \gamma_6 = \gamma_7 = 0
+$$  
+The test statistic is given by: $F(g, n-k)$  
+Where $g$ = the number of parameter restrictions in $H_0$, $n$ is the number of observations, and $k$ is the number of variables in the unrestricted model.  
+
+```{r F-test for joint significance, echo = TRUE}
+
+H_0 <- c("EPSX=0", "lag(EPSX, 1)=0", "lag(EPSX, 2)=0", "lag(EPSX, 3)=0", "lag(EPSY, 1)=0", "lag(EPSY, 2)=0", "lag(EPSY, 3)=0")
+linearHypothesis(mod2, H_0)
+```
+Here we can see that our F-test statistic has degrees of freedom equal to: F(7, 239), and a value of 0.5457, with a p-value of 0.799, which means that we cannot reject $H_0$, the null hypothesis. 
+  
+### (d) Regress $y$ on a constant and $x$. Report the t-value and p-value of the slope coefficient. What conclusion would you be tempted to draw if you did not know how the data were generated?   
+  
+```{r regress Y~X, echo = FALSE}
+
+mod3 <- lm(Y~X, data = TrainExer61)
+
+summary(mod3)$coefficients  
+```
+Looking at the t-value (-33.024) and the p-value (0.000) for the X coefficient, one would conclude that there is a negative correlation between Y and X, and that this relationship is highly significant.  This is an example of a 'spurious regression', as we demonstrated in part(a), where we showed that this relationship is misleading.  
+  
+### (e) Let $e_t$ be the residuals of the regression of part (d). Regress $e_t$ on a constant and the one-period lagged residual $e_{t-1}$. What standard assumption of regression is clearly violated for the regression in part (d)?  
+```{r regress e_mod3~lag(e_mod3, 1), echo = FALSE}
+
+# add resdiuals from mod3 to dataframe
+TrainExer61 <- TrainExer61 %>% mutate(e_mod3 = residuals(mod3))
+
+# regress e_mod3~lag(e_mod3, 1) 
+mod4 <- lm(e_mod3~lag(e_mod3, 1), data = TrainExer61)
+
+summary(mod4)$coefficients  
+```
+Looking at the t-value and p-value from this regression, we can see that the residuals are very strongly correlated, which violates the standard regression assumption that the error terms should be uncorrelated.  
+ 

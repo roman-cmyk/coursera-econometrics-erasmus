@@ -1,0 +1,110 @@
+---
+title: 'Week 4: Endogeneity, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+library(car)
+```
+
+```{r load data for exercise, include=FALSE}
+
+TrainExer45 <- read.csv("../../data/TrainExer45.txt")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 4.5  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer45`and requires a computer.  
+* The dataset `TrainExer45` is [available on the website](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Module%204/TrainExer45.txt).  
+  
+##Questions  
+  
+In this exercise we reconsider the example of lecture 4.5. In this lecture we related the Grade Point Average (GPA) of learners in an engineering MOOC to the participation in a preparatory course. The dataset contains the following variables:  
+  
+* GPA: Grade Point Average in Engineerinc MOOC  
+* Gender: 0/1 dummy for gender (1: male, 0: female)  
+* Participation: 0/1 dummy for participation in a preparatory mathematics course (1: did participate, 0: did not participate)  
+* Email: 0/1 dummy for receiving an email invitation to take the preparatory course (1: received invitation, 0: did not receive invitation)  
+  
+(a) Redo the OLS estimation of the coefficients in a model that explains GPA using a constant, gender and prepartory course participation. Also calculate the standard errors and t-values. Confirm that you obtain the same results as mentioned in the lecture.  
+  
+(b) Use the email dummy as an instrument to perform 2SLS estimation. First do the first-stage regression:  
+$$
+\text{Participation} = \gamma_1 + \gamma_2\text{Gender} + \gamma_3\text{Email} + \eta.
+$$
+Next calculate the predicted values according to this regression and perform OLS on the model:  
+$$
+\text{GPA} = \beta_1 + \beta_2\text{Gender} + \beta_3\widehat{\text{Participation}} + \varepsilon.
+$$
+Confirm that the parameter estimates that you obtain are the same as reported in the lecture.  
+  
+(c) Obtain the standard errors that correspond to the final regression in the previous part. These do **not** match with the standard errors reported in the lecture! Why are the standard errors from part (b) wrong?  
+  
+(d) Calculate the ratio between the standard errors in part (b) and those reported in the lecture. Why is the obtained ratio the same for all parameters? Explain how we can also obtain this ratio using different residual series.  
+
+***
+\pagebreak  
+  
+##Answers
+  
+### (a) Redo the OLS estimation of the coefficients in a model that explains GPA using a constant, gender and prepartory course participation. Also calculate the standard errors and t-values. Confirm that you obtain the same results as mentioned in the lecture.  
+  
+```{r regresss GPA~GENDER+PARTICIPATION, echo = TRUE}
+
+mod1 <- lm(GPA~GENDER+PARTICIPATION, data = TrainExer45)
+  
+summary(mod1)  
+```
+  
+### (b) Use the email dummy as an instrument to perform 2SLS estimation.    
+    
+First do the first-stage regression:     
+```{r regress PARTICIPATION~GENDER+EMAIL, echo = TRUE}
+
+# Perform first stage regression on PARTICIPATION by instruments
+mod2 <- lm(PARTICIPATION~GENDER+EMAIL, data = TrainExer45)
+
+# Save fitted values
+PAR_FIT <- predict(mod2)
+
+#display regression results
+summary(mod2)
+```
+Next calculate the predicted values according to this regression and perform OLS on the model:  
+```{r regress GPA~GENDER+PAR_FIT, echo = TRUE}
+
+mod3 <- lm(GPA~GENDER+PAR_FIT, data = TrainExer45)
+
+summary(mod3)  
+```
+  
+### (c) Obtain the standard errors that correspond to the final regression in the previous part. These do **not** match with the standard errors reported in the lecture! Why are the standard errors from part (b) wrong?  
+  
+The standard errors from our 2SLS in part (b) are:  
+  
+`r summary(mod3)$coefficients[ ,2]`  
+  
+These differ from the lecture, because here, the wrong estimate was used to calculate the variance of epsilon.  In other words, we *should* use the residuals from the regression on PARTICIPATION and *not* the residuals from the fitted values of PARTICIPATION (PAR_FIT) from the first stage of the 2SLS.  
+  
+The ratio of the Standard errors from part (b) and the standard errors from the lecture are:  
+$$
+\frac{\text{SE part (b)}^2}{\text{SE lecture}^2} = 1.063
+$$
+So, the standard errors obtained in the 2SLS are about 6% too high.  The correct estimate of the variance of epsilon is based on the residuals obtained using *actual* participation, not *predicted* participation.  Therefore, the ratio 1.063 is equal to:  
+$$
+\sqrt{\frac{\hat{\sigma^2}_{correct}} {\hat{\sigma^2}_{incorrect}}}
+$$

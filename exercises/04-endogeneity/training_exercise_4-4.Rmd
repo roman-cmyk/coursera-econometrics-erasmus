@@ -1,0 +1,111 @@
+---
+title: 'Week 4: Endogeneity, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+library(car)
+```
+
+```{r load data for exercise, include=FALSE}
+
+TrainExer44 <- read.csv("../../data/TrainExer44.txt")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 4.4  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer44`and requires a computer.  
+* The dataset `TrainExer44` is [available on the website](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Module%204/TrainExer44.txt).  
+  
+##Questions  
+  
+In this exercise we study the gasoline market and look at the relation between consumption and price in the USA. We will use yearly data on these variables from 1977 to 1999. Additionally, we have data on disposable income, and some price indices. More precisely we have
+  
+* GC: log real gasoline consumption;
+* PG: log real gasoline price index;
+* RI: log real disposable income; 
+* RPT: log real price index of public transport; 
+* RPN: log real price index of new cars;
+* RPU: log real price index of used cars.  
+  
+We consider the following model:
+$$
+GC = \beta_1 + \beta_2 PG + \beta_3 RI + \varepsilon
+$$
+  
+(a) Give an argument why the gasoline price may be endogenous in this equation.  
+  
+(b) Use 2SLS to estimate the price elasticity ($\beta_2$). Use a constant, RI, RPT, RPN, and RPU as instruments.  
+  
+(c) Perform a Sargan test to test whether the five instruments are correlated with $\varepsilon$.  What do you conclude?
+
+***
+\pagebreak  
+  
+##Answers
+  
+### (a) Give an argument why the gasoline price may be endogenous in this equation.  
+  
+For example, given that the demand for gasoline in the U.S. influences the global gasoline market, it is therefore likely that a high demand for gasoline in the U.S. leads to an increase in the global market price for gasoline. In other words, consumption (GC) and price (PG) are determined simultaneously, and hence, we suspect that gasoline price may be endogenous in this equation.    
+        
+### (b) Use 2SLS to estimate the price elaticity ($\beta_2$). Use a constant, RI, RPT, RPN, and RPU as instruments.           
+    
+Perform first stage regression of $PG$ by instrumental variables:        
+```{r regress PG~RI+RPT+RPN+RPU and save predicted values, echo = TRUE}
+
+mod1 <- lm(PG~RI+RPT+RPN+RPU, data=TrainExer44)
+
+mod1_pred <- predict(mod1)
+
+summary(mod1)     
+```
+Next, perform the second stage of the OLS by regressing $GC$ by $RI$ and the predicted values from the first stage:  
+```{r regress GC~RI+1st stage predicted values, echo= TRUE}
+
+# add 1st stage predicted values to data frame
+TrainExer44 <- TrainExer44 %>% mutate(PG_FIT = mod1_pred)
+
+# regress GC~RI+PG_FIT
+mod2 <- lm(GC~RI+PG_FIT, data=TrainExer44)
+
+summary(mod2)  
+```
+  
+### (c) Perform a Sargan test to test whether the five instruments are correlated with $\varepsilon$.  What do you conclude?  
+  
+In a Sargan test, we check whether the two-stage least square (2SLS) residuals are correlated with the instruments. If so, this is a sign that the instruments may directly influence the dependent variable and are, therefore, non valid.  
+  
+For additional notes on how to conduct this test in `R`, please consult the following [link](http://eclr.humanities.manchester.ac.uk/index.php/IV_in_R#Sargan_test_for_instrument_validity). 
+```{r calculate Sargan value, echo = TRUE}
+
+# Save the residuals from second stage of 2SLS
+res_2SLS <- residuals(mod2)
+
+# Regress residuals by instruments
+mod3 <- lm(res_2SLS~RI+RPT+RPN+RPU, data=TrainExer44)
+
+# Calculate Sargan value by multiplying R^2 by number of observations (i.e. rows)
+Sargan <- summary(mod3)$r.squared * nrow(TrainExer44)
+
+# Determine p-value of Sargan test using chi_sq distribution
+Sargan_pval <- 1-pchisq(Sargan, 3)
+
+print(paste("Sargan value =", round(Sargan,3)))
+print(paste("Sargan p-value =", round(Sargan_pval, 3)))
+
+```
+The null hypothesis in the Sargan test is that our instruments are *not* correlated with the error term, and here, the p-value is sufficiently large enough that we cannot reject the null, meaning our instruments are good.

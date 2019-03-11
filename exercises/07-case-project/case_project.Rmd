@@ -1,0 +1,471 @@
+---
+title: 'Case Project -- House Prices'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+
+library(knitr)
+library(readxl)
+library(tidyverse)
+library(lmtest)
+library(stargazer)
+library(car)
+library(cowplot)
+library(directlabels)
+library(tseries)
+```
+
+```{r load Case Project data, include=FALSE}
+
+dat <- read_excel("../../data/Case_HousePrices-round1.xls")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+##Notes:
+  
+* See website for how to submit your answers and how feedback is organized.  
+* This exercise uses the datafile `CaseProject-HousePrices` and requires a computer.  
+* The dataset `CaseProject-HousePrices` is [available on the website](https://d3c33hcgiwev3.cloudfront.net/_bb386db860bf2eb4356cd71338367faf_Case_HousePrices-round1.xls?Expires=1548892800&Signature=FmoDq5UFc8dX9xrPv63qccA1N6gspEMMhv2JZY145eimsAnelGAfi~rDmokzECzU1hQB~tj0HY80NNtqs43FmVJg8A8mxZ29f4MCbhMw2A4mePQlLr-ftkM6GfP6yWgtfzgRsvIEUyD7dm-icqysESL0b3KcR64qHb0B6uxWqdk_&Key-Pair-Id=APKAJLTNE6QMUY6HBC5A).  
+* Perform all tests at 5% significance level.
+
+## Goals and skills being used: 
+  
+* Experience the process of variable transformation and model selection.    
+* Apply tests to evaluate models, including effects of endogeneity.  
+* Study the predictive ability of a model.  
+  
+## Background  
+    
+This project is of an applied nature and uses data that are available in the data file Capstone-HousePrices. The source of these data is Anglin and Gencay, "Semiparametric Estimation of a Hedonic Price Function" (Journal of Applied Econometrics 11, 1996, pages 633-648). We consider the modeling and prediction of house prices. Data are available for 546 observations of the following variables:  
+  
+* `sell`: Sale price of the house  
+* `lot`:  Lot size of the property in square feet  
+* `bdms`: Number of bedrooms  
+* `fb`: Number of full bathroom  
+* `sty`:  Number of stories excluding basement  
+* `drv`:  Dummy that is 1 if the house has a driveway and 0 otherwise  
+* `rec`:  Dummy that is 1 if the house has a recreational room and 0 otherwise  
+* `ffin`: Dummy that is 1 if the house has a full finished basement and 0 otherwise  
+* `ghw`:  Dummy that is 1 if the house uses gas for hot water heating and 0 otherwise  
+* `ca`: Dummy that is 1 if there is central air conditioning and 0 otherwise  
+* `gar`:  Number of covered garage places  
+* `reg`:  Dummy that is 1 if the house if located in a preferred neighborhood of the city and 0 otherwise  
+* `obs`:  Observation number, needed in part (h)  
+  
+##Questions  
+    
+(a) Consider a linear model where the sale price of a house is the dependent variable and the explanatory variables are the other variables given above. Perform a test for linearity. What do you conclude based on the test result?  
+  
+(b) Now consider a linear model where the log of the sale price of the house is the dependent variable and the explanatory variables are as before. Perform again the test for linearity. What do you conclude now?  
+  
+(c) Continue with the linear model from question (b). Estimate a model that includes both the lot size variable and its logarithm, as well as all other explanatory variables without transformation. What is your conclusion--should we include lot size itself of its logarithm?  
+  
+(d) Consider now a model where the log of the sale price of the house is the dependent variable and the explanatory variables are the log transformation of lot size, with all other explanatory variables as before. We now consider interaction effects of the log lot size with the other variables. Construct these interaction variables. How many are individually significant?  
+  
+(e) Perform an F-test for the joint significance of the interaction effects from question (d).  
+  
+(f) Now perform model specification on the interaction variables using the general-to-specific approach (Only eliminate the interaction effects).  
+  
+(g) One may argue that some of the explanatory variables are endogenous and that there may be omitted variables. For example the 'condition' of the house in terms of how it is maintained is not a variable (and difficult to measure) but will affect the house price. It will also affect, or be reflected in, some of the other variables, such as whether the house has an air conditioning (which is mostly in newer houses). If the condition of the house is missing, will the effect of air conditioning on the (log of the) sale price be over- or underestimated? (For this question, no computer calculations are required.)  
+  
+(h) Finally, we analyze the predictive ability of the model. Consider again the model where the log of the sale price of the house is the dependent variable and the explanatory variables are the log transformation of lot size, with all other explanatory variables in their original form (and no interaction effects). Estimate the parameters of the model using the first 400 observations. Make predictions on the log of the price and calculate the MAE for the other 146 observations. How good is the predictive power of the model (relative to the variability in the log of the price)?  
+  
+***
+\pagebreak  
+  
+##Answers
+  
+### (a) Consider a linear model where the sale price of a house is the dependent variable and the explanatory variables are the other variables given above. Perform a test for linearity. What do you conclude based on the test result?  
+  
+First we regress `sell` by all of the other variables in the dataset (except for `obs`).  The results are as follows:  
+```{r regress `sell`~all variables except `obs`, echo = TRUE}
+
+mod1 <- lm(sell~lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg, 
+           data = dat)
+
+summary(mod1)$coefficients  
+```
+Next, to determine whether the model is better specified in linear form vs. a non-linear/polynomial form, we can perform a RESET test:  
+```{r perform RESET test on `mod1`, echo = TRUE}
+
+# call `resettest()` from `lmtest` package
+resettest(mod1, power = 2:3, type = "fitted", data = dat)
+```
+The null hypothesis ($H_0$) is that the model is linear.  Here, we have tested the model for both quadratic and cubic influence of the fitted response, returning a RESET test statistic of $13.481$ and a p-value of approximately $0$, which means we can reject the null at the 1% significance level.  
+  
+We can verify this visually, by plotting the real vs. fitted value for this model, where we can see the regression line appears to curve upwards.
+
+```{r add mod1 fitted values and residuals to dataframe for plotting, include = FALSE}
+
+dat$fit1 <- fitted(mod1)
+dat$res1 <- residuals(mod1)
+```
+
+```{r plot mod1 real vs. fitted values, echo = FALSE}
+ggplot(dat, aes(x=fit1, y=sell)) +
+    geom_point(shape = 16, alpha = 0.7) +
+    geom_smooth(color = "blue") + 
+    theme_minimal() + 
+    ggtitle("Model 1: Real vs. Fitted Values") +
+    xlab("")
+```
+  
+Next, we can perform a Jarque-Bera test to see if the residuals from our regression are normally distributed:  
+```{r perform jb test on mod1 residuals, echo = TRUE}
+
+jarque.bera.test(mod1$residuals)  
+```
+Here, we can see that the p-value of our test statistic is approximately $0$, which implies that we can reject the null hypothesis that our residuals are normally distributed.  
+  
+Graphically, we can see that the residuals do not appear to be normally distributed when we look at the histogram of the residuals and the normal probability plot (Q-Q  plot):  
+```{r plot res1 histogram and qq plot, echo = FALSE}
+
+p_res_hist1 <- dat %>% ggplot(aes(x=res1)) + 
+  geom_histogram(bins = 30, color = "dodgerblue4", fill="grey70") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey30") +
+  theme_minimal() +
+  xlab("Model Residuals")  
+
+p_res_qq1 <- dat %>% ggplot(aes(sample=res1)) + 
+  stat_qq(shape = 1, alpha = 0.7, color = "dodgerblue4") + 
+  stat_qq_line() + 
+  theme_minimal() +
+  ylab("Sample Quantiles") + 
+  xlab("Theoretical Quantiles")
+
+p1 <- plot_grid(p_res_hist1, p_res_qq1)
+
+p1_title <- ggdraw() + draw_label("Model 1 Residuals")
+
+plot_grid(p1_title, p1, ncol = 1, rel_heights = c(0.1,1))  
+```
+  
+### (b) Now consider a linear model where the log of the sale price of the house is the dependent variable and the explanatory variables are as before. Perform again the test for linearity. What do you conclude now?  
+  
+First, transform the dependent variable, and then re-run the regression:
+```{r add `log_sell` to `dat`, echo = TRUE}
+
+dat$log_sell <- log(dat$sell)
+```
+
+```{r regress `log_sell`~all variables except `obs`, echo = TRUE}
+
+mod2 <- lm(log_sell~lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg, 
+           data = dat)
+
+summary(mod2)$coefficients  
+```
+Again, we can perform a RESET test to see if the linear specification is correct using this transformed dependent variable:  
+```{r perform RESET test on `mod2`, echo = TRUE}
+
+# call `resettest()` from `lmtest` package
+resettest(mod2, power = 2:3, type = "fitted", data = dat)  
+```
+Here, we can see that the p-value of our RESET test statistic is too large to reject the null, which implies that this model **is** correctly specified in this linear form.  
+    
+When we plot the real vs. fitted value for this new model, we can indeed see that the regression line has a much straighter, more linear shape.
+
+```{r add mod2 fitted values and residuals to dataframe for plotting, include = FALSE}
+
+dat$fit2 <- fitted(mod2)
+dat$res2 <- residuals(mod2)
+```
+
+```{r plot mod2 real vs. fitted values, echo = FALSE}
+ggplot(dat, aes(x=fit2, y=log_sell)) +
+    geom_point(shape = 16, alpha = 0.7) +
+    geom_smooth(color = "coral") + 
+    theme_minimal() + 
+    ggtitle("Model 2: Real vs. Fitted Values") +
+    xlab("")
+```
+  
+Again, we can check the distribution of our model residuals with a JB test:  
+```{r perform jb test on mod2 residuals, echo = TRUE}
+
+jarque.bera.test(mod2$residuals)    
+```
+Here, we can see that while the p-value of our JB test statistic is much bigger than that of the first model, it is smaller than the 5% significance level, so we would again reject $H_0$ here, which implies that for our second model, our residuals are also **not** normally distributed. It is interesting to note that when looking at the plots of the residuals for this model, they do appear to be normally distributed, and at the 1% significance level, the p-value of the JB test would be just big enough to reject the null and assume normality.
+
+```{r plot res2 histogram and qq plot, echo = FALSE}
+
+p_res_hist2 <- dat %>% ggplot(aes(x=res2)) + 
+  geom_histogram(bins = 30, color = "coral4", fill="grey70") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey30") +
+  theme_minimal() +
+  xlab("Model Residuals")  
+
+p_res_qq2 <- dat %>% ggplot(aes(sample=res2)) + 
+  stat_qq(shape = 1, alpha = 0.7, color = "coral4") + 
+  stat_qq_line() + 
+  theme_minimal() +
+  ylab("Sample Quantiles") + 
+  xlab("Theoretical Quantiles")
+
+p2 <- plot_grid(p_res_hist2, p_res_qq2)
+
+p2_title <- ggdraw() + draw_label("Model 2 Residuals")
+
+plot_grid(p2_title, p2, ncol = 1, rel_heights = c(0.1,1))
+```
+  
+### (c) Continue with the linear model from question (b). Estimate a model that includes both the lot size variable and its logarithm, as well as all other explanatory variables without transformation. What is your conclusion--should we include lot size itself of its logarithm?      
+    
+For this third model, we add the transformed `log_lot` variable to our model and re-run the regression:  
+```{r add `log_lot` to `dat`, echo = TRUE}
+
+dat$log_lot <- log(dat$lot)
+```
+
+```{r regress `log_sell`~log_lot+all variables except `obs`, echo = TRUE}
+
+mod3 <- lm(log_sell~lot+log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg, 
+           data = dat)
+
+summary(mod3)$coefficients  
+```
+Again, we check the linear specification of this model with the RESET test:  
+```{r perform RESET test on `mod3`, echo = TRUE}
+
+# call `resettest()` from `lmtest` package
+resettest(mod3, power = 2:3, type = "fitted", data = dat)    
+```
+Similar to the previous model, we do **not** reject $H_0$ here, which means this third model is also correctly specified. With the lowest JB test statistic and highest p-value so far, this model outperforms the other two.
+
+```{r add mod3 fitted values and residuals to dataframe for plotting, include = FALSE}
+
+dat$fit3 <- fitted(mod3)
+dat$res3 <- residuals(mod3)
+```
+
+```{r plot mod3 real vs. fitted values, echo = FALSE}
+ggplot(dat, aes(x=fit3, y=log_sell)) +
+    geom_point(shape = 16, alpha = 0.7) +
+    geom_smooth(color = "magenta") + 
+    theme_minimal() + 
+    ggtitle("Model 3: Real vs. Fitted Values") +
+    xlab("")  
+```    
+
+When we inspect the residuals for this third model we find:   
+```{r perform jb test on mod3 residuals, echo = TRUE}
+
+jarque.bera.test(mod3$residuals)    
+```    
+Here again, according to the JB test statistic, we reject the assumption of normality in the distribution of the residuals of our model. We can see from the lower p-value and from the shape of the plotted distributions below, that the distribution of the error terms here are less normal shaped than in the previous model. 
+
+Finally, with regard to the `lot` and `log_lot` variables in the three models, after accounting for their respective regression coefficients and model test statistics, it would appear that the best way forward would be to omit the `lot` variable while keeping `log_lot`. Our third model, where we included `log_lot` had the lowest JB test statistic (and corresponding highest p-value), which implies it was the best linear fit. Simultaneously, in model 3, the regression coefficient for `log` is approximately zero, so it cancels out of our final regression equation in any case.  Conversely, when we look at model 2, where we only had `log` but did not include `log_lot`, the JB statistic was less favorable while the regression coefficient for `log` also came out to 0 and cancelled out of the model, meaning there is no real advantage to only using `lot` without including `log_lot`.    
+  
+```{r plot res3 histogram and qq plot, echo = FALSE}
+
+p_res_hist3 <- dat %>% ggplot(aes(x=res3)) + 
+  geom_histogram(bins = 30, color = "magenta4", fill="grey70") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey30") +
+  theme_minimal() +
+  xlab("Model Residuals")  
+
+p_res_qq3 <- dat %>% ggplot(aes(sample=res3)) + 
+  stat_qq(shape = 1, alpha = 0.7, color = "magenta4") + 
+  stat_qq_line() + 
+  theme_minimal() +
+  ylab("Sample Quantiles") + 
+  xlab("Theoretical Quantiles")
+
+p3 <- plot_grid(p_res_hist3, p_res_qq3)
+
+p3_title <- ggdraw() + draw_label("Model 3 Residuals")
+
+plot_grid(p3_title, p3, ncol = 1, rel_heights = c(0.1,1))
+```    
+  
+### (d) Consider now a model where the log of the sale price of the house is the dependent variable and the explanatory variables are the log transformation of lot size, with all other explanatory variables as before. We now consider interaction effects of the log lot size with the other variables. Construct these interaction variables. How many are individually significant?  
+  
+Here, we repeat the regression from model 3, but we drop `lot` and add interaction variables between `log_lot` with all of the remaining independent variables. 
+```{r regress log_sell~log_lot+interaction variables, echo = FALSE}
+
+mod4 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*bdms+log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec+
+             log_lot*ffin+log_lot*ghw+log_lot*ca+log_lot*gar+log_lot*reg, 
+           data = dat)
+
+summary(mod4)
+```   
+Looking at the regression results, we can see that two of the interaction variables, `log_lot*drv` and `log_lot*rec` are individually significant at the 5% level.  
+  
+### (e) Perform an F-test for the joint significance of the interaction effects from question (d).  
+  
+First, we need to run the regression for our new model which only uses the two interaction variables (`log_lot*drv` and `log_lot*rec` ) that we found significant in the previous part:  
+```{r regress mod4, but only with two significant interactions, echo = TRUE}
+
+mod5 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*drv+log_lot*rec, 
+           data = dat)
+
+summary(mod5)$coefficients  
+```  
+Looking at the p-values for our regression coefficients, we note that the t-scores for both interaction variables have gone down compared to the previous model, so that `log_lot*rec` is still significant at the 5% threshold, but `log_lot*drv` is just barely above the threshold and would not be considered significant at 5%.  
+  
+To gain some intuition into whether or not we should keep both variables in the model, we can perform an F-test on their joint significance: $F(g, n-k)$, where $g$ = the number of parameter restrictions in $H_0$, $n$ is the number of observations, and $k$ is the number of variables in the unrestricted model. The null hypothesis ($H_0$) in this case states that the effect of our two interactions variables in the model are equal to zero (i.e. jointly insignificant).  
+```{r run F-test on mod5, echo = TRUE}
+
+# set H_0 restrictions
+H_0 <- c("log_lot:drv=0", "log_lot:rec=0")
+
+# run heteroskedasticity-robust version of the F-test
+linearHypothesis(mod5, H_0, white.adjust = "hc1")
+```
+Here we can see that our F-test has degrees of freedom equal to: F(2, 532), and a value of 5.163, with a p-value of 0.006, which means that we would reject $H_0$, and our interaction variables are indeed jointly significant at the 1% significance level.  
+  
+### (f) Now perform model specification on the interaction variables using the general-to-specific approach (Only eliminate the interaction effects).  
+    
+If we return to our fourth model from part (d), we can also perform model specification on all of the interaction variables by using the general-to-specific approach: that is, we regress everything, eliminate the variable with the lowest t-value, and repeat with as many rounds needed until all of the remaining interaction variables are significant.  
+  
+```{r run general-to-specific on mod4 interaction variables, echo = FALSE}
+
+# General-to-specific round 1, regress all interaction variables
+gts_01 <- mod4
+
+# General-to-specific round 2: drop `log_lot*reg`
+gts_02 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*bdms+log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec+
+             log_lot*ffin+log_lot*ghw+log_lot*ca+log_lot*gar, 
+           data = dat)
+# General-to-specific round 3: drop `log_lot:bdms`
+gts_03 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec+
+             log_lot*ffin+log_lot*ghw+log_lot*ca+log_lot*gar, 
+           data = dat)
+# General-to-specific round 4: drop `log_lot:ffin`
+gts_04 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec+
+             log_lot*ghw+log_lot*ca+log_lot*gar, 
+           data = dat)
+# General-to-specific round 5: drop `log_lot:ghw`
+gts_05 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec+
+             log_lot*ca+log_lot*gar, 
+           data = dat)
+# General-to-specific round 6: drop `log_lot:ca`
+gts_06 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec+
+             log_lot*gar, 
+           data = dat)
+# General-to-specific round 7: drop `log_lot:gar`
+gts_07 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*fb+log_lot*sty+log_lot*drv+log_lot*rec, 
+           data = dat)
+# General-to-specific round 8: drop `log_lot:fb`
+gts_08 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*sty+log_lot*drv+log_lot*rec, 
+           data = dat)
+# General-to-specific round 9: drop `log_lot:sty`
+gts_09 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*drv+log_lot*rec, data = dat)
+# General-to-specific round 10: drop `log_lot:drv`
+gts_10 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg+
+             log_lot*rec, data = dat)
+```
+
+```{r print gts results , echo = FALSE, results = "asis"}
+
+# print gts t-scores for interaction variables
+stargazer(gts_01, gts_02, gts_03, gts_04, gts_05, 
+          gts_06, gts_07, gts_08,gts_09, gts_10,
+          header = FALSE, report = "vt", keep.stat = "rsq",
+          font.size = "small", 
+          column.sep.width = "-10pt",
+          intercept.bottom = FALSE,
+          omit = 1:12,
+          title = "General-to-Specific model specification: Model 4 interaction variables",
+          column.labels = "Round",
+          notes.align = "l",
+          notes.append = FALSE,
+          notes = "\\parbox[t]{\\textwidth}{This table shows the general-to-specific (GTS) regression results for our fourth model from part (d). Round 1 represents the regression of model 4 in its entirety, and for each subsequent round, only the interaction term with the lowest t-score was eliminated. This table only displays the t-scores of the interaction variables in each round.}"
+          )
+```   
+Under the 5% significance threshold, we perform 10 rounds of general-to-specific regression until we arrive at a model where all of the interaction variables are significant. For our model 4 from part(d), the final model, it is only the `log_lot*rec` interaction variable that is still significant at the 5% level, which confirms what we saw in our model 5 regression results from part (e).  
+  
+### (g) One may argue that some of the explanatory variables are endogenous and that there may be omitted variables. For example the 'condition' of the house in terms of how it is maintained is not a variable (and difficult to measure) but will affect the house price. It will also affect, or be reflected in, some of the other variables, such as whether the house has an air conditioning (which is mostly in newer houses). If the condition of the house is missing, will the effect of air conditioning on the (log of the) sale price be over- or underestimated? (For this question, no computer calculations are required.)  
+  
+If the condition of the house is missing, the effect of the air conditioning variable (`ca`) on the log of the sale price (`log_sell`) will be overestimated, as houses with air conditioning also tend to be much newer than houses without air-conditioning, and how "new" a house is (i.e. its age) should, in theory, have a direct effect on home sales prices.  
+  
+### (h) Finally, we analyze the predictive ability of the model. Consider again the model where the log of the sale price of the house is the dependent variable and the explanatory variables are the log transformation of lot size, with all other explanatory variables in their original form (and no interaction effects). Estimate the parameters of the model using the first 400 observations. Make predictions on the log of the price and calculate the MAE for the other 146 observations. How good is the predictive power of the model (relative to the variability in the log of the price)?  
+  
+Here, our final model is similar model 3 from part (c), except that we remove the `lot` variable, leaving only `log_lot`, plus all of the other original explanatory variables (and no interaction variables). 
+  
+$$
+ log(sell) = \beta_0 + \beta_1 log(lot) + \beta_2 bdms + \beta_3 fb + \beta_4 sty + \beta_5 drv + \beta_6 rec + \\ 
+\beta_7 ffin + \beta_8 ghw + \beta_9 ca + \beta_{10} gar + \beta_{11} reg + \varepsilon 
+$$  
+After we split the dataset and run a regression on the new subset using this model, our model coefficients come out to be:
+
+```{r subset row 1:400 from dat, include = FALSE}
+dat_sub1 <- dat[1:400, ]
+dat_sub2 <- dat[401:546, ]
+```
+
+```{r regress mod6 on dat_sub, echo = TRUE}
+
+mod6 <- lm(log_sell~log_lot+bdms+fb+sty+drv+rec+ffin+ghw+ca+gar+reg, 
+           data = dat_sub1)
+
+summary(mod6)$coefficients
+```
+Next, we plug these coefficients back into our model as the $\beta$ values and predict `log_sell` prices for the remaining 146 observations from our dataset. We can compare those predictions to the actual `log_sell` prices in the dataset and then calculate the MAE:  
+
+```{r calculate mod6 predicted values log_sell, echo = TRUE}
+
+# First we create a table to store the results of our respective models
+nn <- 1:146
+
+dat_pred <- tibble(obs = dat_sub2$obs, log_sell_actual = dat_sub2$log_sell[nn])
+dat_pred$log_sell_predicted <- NA    
+
+# Next we can loop through all the rows in dat_sub2 and save
+# the predicted values for log_sell to our table
+for (i in 1:length(nn)) {
+  temp <- (7.67309380 + 0.31377577*dat_sub2$log_lot[i] + 0.03787207*dat_sub2$bdms[i] + 
+             0.15237512*dat_sub2$fb[i] +  0.0882383*dat_sub2$sty[i] + 0.08641375*dat_sub2$drv[i] +
+             0.05465005*dat_sub2$rec[i] + 0.11471077*dat_sub2$ffin[i] + 0.19869752*dat_sub2$ghw[i] +
+             0.17763419*dat_sub2$ca[i] + 0.05301455*dat_sub2$gar[i] + 0.15116021*dat_sub2$reg[i])
+  
+  dat_pred[i, 3] <- temp
+  
+}
+```
+Just to check, we can have a look at the first few entries of our results table: 
+```{r print first 10 predicted results, echo = TRUE, results = "asis"}
+
+knitr::kable(head(dat_pred, 10))
+```    
+  
+Finally, we can calculate the MAE of our model predictions: 
+```{r calcuate MAE for mod6 predictions, echo = TRUE}
+
+MAE_mod6 =  mean(abs(dat_pred$log_sell_actual - dat_pred$log_sell_predicted))
+
+print(paste("Model 6 predictions MAE =", round(MAE_mod6, 3)))
+```  
+  
+The actual variability (in standard deviations) of the log price `log_sell` in our original dataset is: `r sd(dat$log_sell)`.  Comparing this to our MAE for model 6, we can see that our model has much smaller variability and, hence, it has good predictive power.   
+  
+```{r plot dat_pred, echo = FALSE}
+
+p_dat_pred <- dat_pred %>% gather(model, log_sell, 2:3)
+
+p_dat_pred$model <- as.factor(p_dat_pred$model)
+
+p_dat_pred %>% ggplot(aes(y=log_sell, x = obs, color = model)) + 
+  geom_line() + 
+  theme_minimal() + 
+  ggtitle("Model 6 Predictions vs. Actual")
+```
+

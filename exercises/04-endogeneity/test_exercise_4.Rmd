@@ -1,0 +1,220 @@
+---
+title: 'Test Exercise 4'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+library(car)
+```
+
+```{r load data for exercise, include=FALSE}
+
+TestExer4 <- read.csv("../../data/TestExer4_Wage-round1.txt")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+
+##Notes:
+  
+* See website for how to submit your answers and how feedback is organized.    
+* This exercise uses the datafile `TestExer4_Wage` and requires a computer.  
+* The dataset `TestExer4_Wage` is [available on the website](https://d3c33hcgiwev3.cloudfront.net/_a1c53957215a0d23aaf76e19d23e5ae1_TestExer4_Wage-round1.txt?Expires=1548374400&Signature=QM7609ZLDy-Ms11poWIdkUNRnb-a0UIwAaLUcBsgqOVnM43hWAcawmzRsqeRDPUD8sdYEVGVCDkhl55k0f4qG5z0tJUDgxO5B8SJiQCBlbAV54O-OzGUaGnsf5WXOB5f7TV3DBqfg~dMrxKXXVEwOtH5GVaOiSLbWI6Jtil~8EQ_&Key-Pair-Id=APKAJLTNE6QMUY6HBC5A).  
+  
+## Goals and skills being used: 
+  
+* Obtain insight in consequences of endogeneity  
+* Practice with identifying causes of endogeneity  
+* Practice with identifying valid instruments  
+* Obtain hands-on experience with applying 2SLS and the Sargan test  
+  
+##Questions  
+    
+A challenging and very relevant economic problem is the measurement of the returns to schooling. In this question, we will use the following variable on 3,010 US men:  
+  
+* `logw`: log wage  
+* `educ`: number of years of schooling  
+* `age`: age of the individual in years  
+* `exper`: working experience in years  
+* `smsa`: dummy indicating whether the individual lived in a metropolitan area  
+* `south`: dummy indicating whether the individual lived in the south  
+* `nearc`: dummy indicating whether the individual lived near a 4-year college  
+* `dadeduc`: education of the individual's father (in years)  
+* `momeduc`: education of the individual's mother (in years)  
+  
+This data is a selection of the data used by D. Card (1995)[^1]  
+  
+(a) Use OLS to estimate the parameters of the model:
+$$
+logw = \beta_1 + \beta_2 educ + \beta_3 exper + \beta_4 exper^2 + \beta_5 smsa + \beta_6 south + \varepsilon.  
+$$
+Give an interpretation to the estimated $\beta_2$ coefficient.  
+  
+(b) OLS may be inconsistent in this case as `educ` and `exper` may be endogenous. Give a reason why this may be the case. Also indicate whether the estimate in part (a) is still useful.  
+  
+(c) Give a motivation why `age` and `age^2` can be used as instruments for `exper` and `exper^2`.  
+  
+(d) Run the first-stage regression for `educ` for the two-stage least squares estimation of the parameters in the model once when `age`, `age^2`, `nearc`, `dadeduc`, and `momeduc` are used as additional instruments. What do you conclude about the suitability of these instruments for schooling?  
+  
+(e) Estimate the parameters of the model for log wage using two-stage least squares where you correct for the endogeneity of education **and** experience. Compare your result to the estimate in part (a).  
+  
+(f) Perform the Sargan test for validity of the instruments. What is your conclusion?  
+    
+***
+\pagebreak  
+  
+##Answers
+  
+### (a) Use OLS to estimate the parameters of the model and give an interpretation to the estimated $\beta_2$ coefficient.:
+$$
+logw = \beta_1 + \beta_2 educ + \beta_3 exper + \beta_4 exper^2 + \beta_5 smsa + \beta_6 south + \varepsilon.  
+$$
+
+```{r regress logw~educ+exper+exper^2+smsa+south, echo = TRUE}
+
+# Add exper^2 to data frame
+TestExer4 <- TestExer4 %>% mutate(exper2 = exper^2)  
+  
+# Regress logw
+mod1 <- lm(logw~educ+exper+exper2+smsa+south, data = TestExer4)  
+
+# Print regression results  
+summary(mod1)  
+```
+From the regression results, we can see that the $\beta_2$ coefficient is equal to `r summary(mod1)$coefficients[2,1]`. In other words, for each additional year of education, the log wage earned increases by `r round(summary(mod1)$coefficients[2,1], 3)`.  
+  
+We can convert this into a percentage term by taking the exponent, which leads us to say that, for each additional year of education, the wage earned increases by 8.5%.    
+        
+### (b) OLS may be inconsistent in this case as `educ` and `exper` may be endogenous. Give a reason why this may be the case. Also indicate whether the estimate in part (a) is still useful.  
+  
+A variable is said to be endogenous if it is correlated with the error term.  In other words, there is some omitted factor within the error term, $\varepsilon$, that is not included in our model that affects both $y$ and $X$. If this is the case, then OLS does not properly estimate $\beta$, and our model would be biased, inconsistent and no longer useful.  
+  
+In the example given here, `educ` and `exper` may be endogenous as there are a number of other factors not included in our model that could affect both of these independent variable, as well as the outcome/dependent variable.  For example, intelligence, ability or socio-economic status.  
+  
+### (c) Give a motivation why `age` and `age^2` can be used as instruments for `exper` and `exper^2`.  
+  
+ A valid instrument must satisfy two conditions: namely, (1) that the instrument ($Z$) and the endogenous variable ($X$) are correlated, and (2) that the instrument ($Z$) does not correlate with the error term ($\varepsilon$).  
+   
+With that said, `age` can be used as an instrument for `exper` as it is correlated with experience (the endogenous variable) and it is also clearly exogenous (determined outside of the model) and therefore not correlated to the error term.  
+  
+### (d) Run the first-stage regression for `educ` for the two-stage least squares estimation of the parameters in the model once when `age`, `age^2`, `nearc`, `dadeduc`, and `momeduc` are used as additional instruments. What do you conclude about the suitability of these instruments for schooling?   
+  
+```{r regress educ~age+age2+nearc+daded+momed+smsa+south, echo = TRUE}
+
+# Add age^2 to dataframe
+TestExer4 <- TestExer4 %>% mutate(age2 = age^2)  
+
+# Regress educ
+mod2 <- lm(educ~age+age2+nearc+daded+momed+smsa+south, data = TestExer4)  
+
+# Save fitted values
+educ_fit <- fitted(mod2)
+  
+# Print regression results
+summary(mod2)  
+```
+Looking at the results of this regression, the variables `age`, `age^2`, `nearc`, `dadeduc`, and `momeduc` are all significantly correlated with `educ`, and would be suitable instruments for `educ`.  
+  
+### (e) Estimate the parameters of the model for log wage using two-stage least squares where you correct for the endogeneity of education **and** experience. Compare your result to the estimate in part (a).  
+  
+We already performed the first-stage regression and saved the fitted values for `educ`, so now we just need to do the same for `exper` and `exper2` before we can proceed to the second-stage:  
+```{r perform 1st stage and save fitted values for exper and exper2, echo = TRUE}
+
+# Perform 1st stage regression for `exper`
+mod3 <- lm(exper~age+age2+daded+momed+smsa+south+nearc,data = TestExer4)
+
+# Save fitted values for `exper`$
+exper_fit <- fitted(mod3)  
+  
+# Perform 1st stage regression for `exper2`
+mod4 <- lm(exper2~age+age2+daded+momed+smsa+south+nearc,data = TestExer4)
+
+# Save fitted values for `exper2`
+exper2_fit <- fitted(mod4)  
+```
+Now that we have the fitted values for the three endogenous variables we are replacing with instruments, we can run the second stage regression as follows:  
+```{r regress logw~educ_fit+exper_fit+exper2_fit+smsa+south, echo = TRUE}
+
+# Add fitted values to dataframe
+TestExer4 <- TestExer4 %>% mutate(educ_fit = educ_fit, exper_fit = exper_fit, exper2_fit = exper2_fit)
+
+# Perform 2nd stage regression
+mod5 <- lm(logw~educ_fit+exper_fit+exper2_fit+smsa+south, data = TestExer4)
+
+# Print regression results
+summary(mod5)
+```
+We can compare our results with what we obtained in part (a) with the following table:  
+```{r compared mod1 and mod5 summaries, echo=FALSE, results="asis"}
+
+stargazer(mod1, mod5, header = FALSE, keep.stat = "rsq")  
+```
+Here we can see that the overall picture of the two models is quite similar. The signs of the coefficients remain the same between the original and the fitted estimators, all of them are significant (though the strength of the `exper2_fit` goes down quite a bit), and differences between original and fitted estimators is quite small in all cases. We can also see that the $R^2$ value in the 2SLS model goes down a little when compared to the OLS model.  
+  
+### (f) Perform the Sargan test for validity of the instruments. What is your conclusion?   
+    
+To perform the Sargan test, we need use the residuals from our 2SLS, which we can derive by using the coefficients from our second-stage regression ($b_{\text{2SLS}}$) and plugging them back into our original dataset, so that we have:  
+$$
+e_{\text{2SLS}} = y - X\cdot b_{\text{2SLS}}
+$$
+From our example here, we would have: 
+$$
+e_{\text{2SLS}} = logw - (\beta_1 + \beta_2 educ + \beta_3 exper + \beta_4 exper^2 + \beta_5 smsa + \beta_6 south)
+$$
+```{r plug in 2SLS coefficients to original model and calcuate residuals, echo = TRUE}
+
+# Use the attach() function to make it easier to call up all the column names in the following formula
+attach(TestExer4)
+
+# Plug in 2nd-stage coefficients to calculate 2SLS residuals
+#
+# Note that it is important to use the full values here, as using rounded numbers 
+# will lead to incorrect results when calculating test statistics later on.
+e_2SLS <- logw - (4.416903899 + 0.099842919*educ + 0.072866858*exper - 0.001639293*exper2 + 0.134937031*smsa - 0.158986861*south)
+
+# Add residuals vector to our dataframe for later use
+TestExer4 <- TestExer4 %>% mutate(e_2SLS = e_2SLS)
+
+# detach dataframe
+detach(TestExer4)
+```
+Next we regress our 2SLS residual term ($e_{\text{2SLS}}$) by our instruments ($Z$)
+```{r regress e_2SLS~, echo = TRUE}
+
+# Regress 2SLS residuals by instruments
+mod6 <- lm(e_2SLS~age+age2+daded+momed+smsa+south+nearc, data = TestExer4)
+
+summary(mod6)
+```
+Next we can calculate the Sargan test statistic by multiplying the $R^2$ value obtained in this regression with the number of observations ($n$) in the dataset.
+```{r calcualte Sargan test statistic, echo = TRUE}
+
+Sargan <- summary(mod6)$r.squared * nrow(TestExer4)
+```
+  
+Finally, we can check the p-value of our test statistic by using the $\chi^2 (m-k)$ distribution, where $m$ is the number of instruments in $Z$, and $k$ is the number of explanatory variables in $X$. 
+```{r calculate Sargan p-value, echo = TRUE}
+
+# Determine p-value of Sargan test using chi_sq distribution
+Sargan_pval <- 1-pchisq(Sargan, 2)
+
+print(paste("Sargan value =", round(Sargan,3)))
+print(paste("Sargan p-value =", round(Sargan_pval, 5)))  
+```
+The null hypothesis ($H_0$) in the Sargan test is that our instruments are *not* correlated with the error term, and here, the p-value is too large to reject the null, meaning that our instruments are not correlated with the error term and hence, they are valid.
+
+
+
+
+
+[^1]: “Using Geographic Variation in College Proximity to Estimate the Return to Schooling”. In L.N. Christofides, E.K. Grant, and R. Swidinsky, editors, Aspects of Labor Market Behaviour: Essays in Honour of John Vanderkamp. Toronto: University of Toronto Press, 1995.

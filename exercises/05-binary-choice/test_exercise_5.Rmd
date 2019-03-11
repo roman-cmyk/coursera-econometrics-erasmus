@@ -1,0 +1,115 @@
+---
+title: 'Test Exercise 5'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(knitr)
+```
+
+```{r load Training Exercise 5.5 data, include=FALSE}
+
+dat <- read_excel("../../data/Data Lecture 5-5.xls")
+```
+
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+
+##Notes:
+  
+* See website for how to submit your answers and how feedback is organized.    
+
+## Goals and skills being used: 
+  
+* Get experience with the mathematical structure of the logit model  
+* Get experience with the interpretation of parameters of the logit model  
+  
+##Questions  
+    
+Consider again the application in lecture 5.5, where we have analyzed response to a direct mailing using the following logit specification:  
+$$
+Pr[\text{resp}_i = 1] = \frac{exp(\beta_0 + \beta_1 \text{male}_i + \beta_2 \text{active}_i + \beta3 \text{age}_i + \beta_4(\text{age}_i/10)^2 )}
+  {1 + exp(\beta_0 + \beta_1 \text{male}_i + \beta_2 \text{active}_i + \beta3 \text{age}_i + \beta_4(\text{age}_i/10)^2 )}
+$$
+for $i = 1, ..., 925$. The maximum likelihood estimates of the parameters are given by:  
+```{r regress and show MLEs, echo = FALSE, results = "asis"}
+# add age^2 variable to data frame
+dat <- dat %>% mutate(age10_2 = (age/10)^2)
+
+mod1 <- glm(formula = response~male+activity+ age+age10_2, family = binomial, data = dat)
+
+stargazer(summary(mod1)$coefficients, header = FALSE)
+```
+(a) Show that:
+$$
+\frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} + 
+  \frac{\partial Pr[\text{resp}_i = 0]}{\partial \text{age}_i} = 0
+$$  
+  
+(b) Assume that you recode the dependent variable as follows: $\text{resp}_i^{new} = - \text{resp}_i + 1$. Hence, positive response is now defined to be equal to zero and negative response to be equal to 1. Use the odds ratio to show that this transformation implies that the sign of all parameters change.  
+      
+(c) Consider again the odds ratio positive repose versus negative response: 
+$$
+\frac{Pr[\text{resp}_i = 1]}{Pr[\text{resp}_i = 0]} = exp(\beta_0 + \beta_1 \text{male}_i + \beta_2 \text{active}_i + \beta3 \text{age}_i + \beta_4(\text{age}_i/10)^2 ).
+$$  
+During lecture 5.5, you have seen that this odds ration obtains its maximum value for age equal to 50 years for males as well as females. Suppose now that you want to extend the logit model and allow that this age value is possibly different for males than for females. Discuss how you can extend the logit specification.  
+  
+***
+\pagebreak  
+  
+##Answers
+
+### (a) Show that:  
+$$
+\frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} + 
+  \frac{\partial Pr[\text{resp}_i = 0]}{\partial \text{age}_i} = 0
+$$  
+We can prove this by showing: 
+
+\begin{align*}
+\frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} + 
+  \frac{\partial Pr[\text{resp}_i = 0]}{\partial \text{age}_i} &= 
+    \frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} + 
+    \frac{\partial Pr[1 - \text{resp}_i = 1]}{\partial \text{age}_i} \\
+  &= \frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} + 
+    \frac{-\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} \\
+  &= \frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} - 
+    \frac{\partial Pr[\text{resp}_i = 1]}{\partial \text{age}_i} \\
+  &= 0
+\end{align*}
+    
+### (b) Assume that you recode the dependent variable as follows: $\text{resp}_i^{new} = - \text{resp}_i + 1$. Hence, positive response is now defined to be equal to zero and negative response to be equal to 1. Use the odds ratio to show that this transformation implies that the sign of all parameters change.  
+  
+When the dependent variable is recoded as such, it means that the odds ratio is inverted, so that: 
+$$
+\text{Inverse odds ratio} = \frac{Pr[\text{resp}_i = 0]}{Pr[\text{resp}_i = 1]}
+$$  
+By working through the full odds ratio formula, we can show that this transformation implies that the sign of all parameters change:  
+
+\begin{align*}
+\frac{Pr[\text{resp}_i = 0]}{Pr[\text{resp}_i = 1]} &= 
+  \frac{1}{exp(\beta_0 + \sum_{j=2}^k \beta_j \cdot x_{ji})} \\
+  &= exp(- \beta_0 - \sum_{j=2}^k \beta_j \cdot x_{ji}) \\
+  &= exp(- \beta_0 - \beta_1 \text{male}_i - \beta_2 \text{active}_i - \beta3 \text{age}_i - \beta_4(\text{age}_i/10)^2)  
+\end{align*}
+  
+### (c) Consider again the odds ratio positive reponse versus negative response: 
+$$
+\frac{Pr[\text{resp}_i = 1]}{Pr[\text{resp}_i = 0]} = exp(\beta_0 + \beta_1 \text{male}_i + \beta_2 \text{active}_i + \beta3 \text{age}_i + \beta_4(\text{age}_i/10)^2 ).
+$$  
+During lecture 5.5, you have seen that this odds ration obtains its maximum value for age equal to 50 years for males as well as females. Suppose now that you want to extend the logit model and allow that this age value is possibly different for males than for females. Discuss how you can extend the logit specification.  
+  
+There would be several ways to extend this logit specification to account for differences between males and females. One could, for example, split the sample by gender and estimate the coefficients for each group, and then check to see how they differ. Conversely, one could also leave the sample as is, but add an interaction variable (between gender and some other regressor), and then check to see if this interaction variable is both significant and different between the genders.  
+  
+
+  

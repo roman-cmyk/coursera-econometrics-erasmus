@@ -1,0 +1,67 @@
+---
+title: 'Week 2: Multiple Regression, Training Exercises'
+subtitle: <h3>Coursera/Erasumus U., Econometric Methods and Applications</h3>
+author: "Anthony Nguyen"
+output:
+  pdf_document: 
+    keep_tex: no
+    includes:
+      in_header: preamble_2.tex
+  html_document:
+    theme: cosmo
+---
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 2.3  
+  
+##Questions  
+  
+In economic and business applications, the variables $(x_{1i}, \dots, x_{ki})$ usually do not have natural measurement units. Personal income, for example, can be measured in units or thousands of local currency or US dollars, and per month or per year. A change of measurement scale of the j-th variable corresponds to a transformation $\tilde{x_{ji}} = a_j x_{ji}$ (with $a_j$ fixed for $i=1, \dots, n$). Let $A = diag(a_1,\dots,a_k)$ and let $\tilde{X} = XA$. We even allow for non-diagonal $A$ and define $\tilde{X} = XA$ where $A$ is any invertible $(k\; \text{x}\; k)$ matrix.  As before, let $\hat{y} = Xb$ be the predicted values of $y$.  
+  
+###(a) Prove that $\hat{y}$, $e$, $s^2$, and $R^2$ do not depend on $A$ (that is, are invariant under linear transformations). 
+  
+###(b) Prove that $\tilde{b} = A^{-1}b$ and provide and intuitve interpretation.   
+  
+***
+\pagebreak  
+  
+##Answers    
+    
+###(a) Prove that $\hat{y}$, $e$, $s^2$, and $R^2$ do not depend on $A$ (that is, are invariant under linear transformations). 
+\begin{align*}  
+\tilde{X} &= XA \\  
+H &= X(X'X)^{-1}X'
+\end{align*}
+  
+After transformation:
+\begin{align*}  
+\tilde{H} &= \tilde{X}(\tilde{X}'\tilde{X})^{-1}\tilde{X}' \\   
+  &= XA(A'X'XA)^{-1} A'X' \\  
+  &= XAA^{-1} (X'X)^{-1} (A')^{-1} A'X' \\  
+  &= X(X'X)^{-1} X' \\
+  &= H
+\end{align*}
+
+$$\hat{\tilde{y}} = \tilde{H}y = Hy = \hat{y}$$
+$$\tilde{e} = \tilde{M}y = (I-\tilde{H})y = (I-H)y = My = e$$ 
+$$\tilde{s}^2 = \tilde{e}'\tilde{e}/(n-u) = e'e/(n-u) = s^2$$ 
+$$\tilde{R^2} = (corr(y, \hat{\tilde{y}}))^2 = (corr(y, \hat{y}))^2 = R^2$$
+
+###(b) Prove that $\tilde{b} = A^{-1}b$ and provide and intuitve interpretation. 
+  
+\begin{align*}  
+\tilde{b} &= (\tilde{X}'\tilde{X}^{-1} \tilde{X}'y) \\  
+  &= (A'X'XA)^{-1} A'X'y  \\
+  &= A^{-1}(X'X)^{-1} (A^1)^{-1} A'X'y \\  
+  &= A^{-1}(X'X)^{-1} X'y \\  
+  &= A^{-1}b  \\
+\\
+y &= X\beta + \varepsilon \\  
+  &= XAA^{-1}\beta + \varepsilon \\  
+  &= \tilde{X}(A^{-1}\beta) + \varepsilon \\
+\\  
+\beta &\rightarrow A^{-1}\beta \\ 
+b &\rightarrow A^{-1}b  
+\end{align*}

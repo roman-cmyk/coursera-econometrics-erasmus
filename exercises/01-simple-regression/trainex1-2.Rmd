@@ -1,0 +1,39 @@
+---
+title: 'Week 1: Simple Regression, Training Exercise 1.2'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasumus U., Econometric Methods and Applications</h3>
+output:
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+```
+
+```{r load data for exercise, include=FALSE}
+TrainExer11 <- read_tsv("../../data/TrainExer11.txt")
+```
+
+#Questions  
+A transformation of the data on $x_i$ and  $y_i$ (like taking their logarithm) changes the interpretation of the slope parameter $\beta$.  
+ 
+  (a) Show that in the regression model $log(yi) = \alpha + \beta log(x_i) + \varepsilon_ i$, the elasticity of $y$ with respect to $x$ is equal to $\beta$ (that is, does not depend on the values of xi and yi).  
+  
+  (b) Determine the elasticity of $y$ with respect to $x$ in the model $y_i = \alpha + \beta log(x_i) + \varepsilon_i$.  
+    
+  (c) Determine the elasticity of $y$ with respect to $x$ in the model $log(yi) = \alpha + \beta x_i + \varepsilon_i$.  
+    
+***  
+
+#Answers  
+  
+(a) 
+
+$$
+\begin{equation} \label{eq1}
+\begin{split}
+A & = \frac{\pi r^2}{2} \\
+ & = \frac{1}{2} \pi r^2
+\end{split}
+\end{equation}
+$$

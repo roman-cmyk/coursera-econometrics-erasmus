@@ -1,0 +1,314 @@
+---
+title: 'Test Exercise 6'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(car)
+library(lubridate)
+library(cowplot)
+library(directlabels)
+library(tseries)
+library(knitr)
+```
+
+```{r load Test Exercise 6 data, include=FALSE}
+
+dat <- read_excel("../../data/TestExer-6-CPI-round1.xlsx")
+
+dat$DPEUR <- as.numeric(dat$DPEUR)
+dat$DPUSA <- as.numeric(dat$DPUSA)
+```
+
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+
+##Notes:
+  
+* See website for how to submit your answers and how feedback is organized.  
+* This exercise uses the datafile `TestExer6` and requires a computer. 
+* The dataset `TestExer6` is [available on the website](https://d3c33hcgiwev3.cloudfront.net/_b224e748359b3e415f11428f1c98a285_TestExer-6-CPI-round1.xlsx?Expires=1548892800&Signature=NsfRu7hPR9~z21C1HZ-t1iixGyxuxkPS7LUg18LXqB~M3rAIdAz6Fz6CNMoPxHq6iSztu6lyQtRThTXpufcOsV2slJ3LXgQn7ZalSItHc4w6tswtqkSKYTcaPaEa-mxn55AEo4ORUjlFTzjP36N0OFTNnLdQlP37T4tYulqUgZk_&Key-Pair-Id=APKAJLTNE6QMUY6HBC5A).
+
+## Goals and skills being used: 
+  
+* Experience the process of practical application of time series analysis.    
+* Get hands-on experience with the analysis of time series.  
+* Give correct interpretation of outcomes of the analysis.  
+  
+##Questions  
+    
+This test exercise uses data that are available in the data file `TextExer6`. The question of interest is to model monthly inflation in the Euro area and to investigate whether inflation in the United States of America has predictive power for inflation in the Euro area. Monthly data on the consumer price index (CPI) for the Euro area and the USA are available from January 2000 until December 2011. The data for January 2000 until December 2010 are used for specification and estimation of models, and the data for 2011 are left out for forecast evaluation purposes.  
+  
+(a) Make time series plots of the CPI of the Euro area and the USA, and also of their logarithm, $log(CPI)$, and of the two monthly inflation series, $DP = \Delta log(CPI)$. What conclusions do you draw from these plots?  
+  
+(b) Perform the Augmented Dickey-Fuller (ADF) test for the two $log(CPI)$ series. In the ADF test equation, include a constant $(\alpha)$, a deterministic trend term ($\beta_t$), three lags of $DP = \Delta log(CPI)$ and, of course, the variable of interest, $log(CPI_{t-1}$. Report the coefficient of $log(CPI_{t-1}$ and its standard error and t-value, and draw your conclusion.  
+  
+(c) As the two series of $log(CPI)$ are not cointegrated (you need not check this), we continue by modeling the monthly inflation series $DPEUR = \Delta log(CPIEUR)$ for the Euro area. Determine the sample autocorrelations and the sample partial autocorrelations of the this series to motivate the use of the following AR model: $DPEUR_t = \alpha + \beta_1 DPEUR_{t-6} + \beta_2 DPEUR_{t-12} + \varepsilon_t$. Estimate the parameters of this model (sample Jan 2000 - Dec 2010).  
+  
+(d) Extend the AR model of part (c) by adding lagged values of monthly inflation in the USA at lags1, 6, and 12. Check that the coefficient at lag 6 is not significant, and estimate the ADL model $DPEUR_t = \alpha + \beta_1 DPEUR_{t-6} + \beta_2 DPEUR_{t-12} + \gamma_+ DPUSA_{t-1} + \gamma_2 DPUSA_{t-12} + \varepsilon_t$ (sample Jan 2000 - Dec 2010).  
+  
+(e) Use the models of parts (c) and (d) to make two series of 12 monthly inflation forecasts for 2011. At each month, you should use the data that are then available, for example, to forecast inflation for September 2011 you can use the data up to and including August 2011. However, do not re-estimate the model and use the coefficients as obtained in parts (c) and (d). For each of the two forecast series, compute the values of the room mean squared error (RMSE), mean absolute error (MAE), and the sum of the forecast errors (SUM). Finally, give your interpretation of the outcomes.   
+
+***
+\pagebreak  
+  
+##Answers
+  
+### (a) Make time series plots of the CPI of the Euro area and the USA, and also of their logarithm, $log(CPI)$, and of the two monthly inflation series, $DP = \Delta log(CPI)$. What conclusions do you draw from these plots?  
+```{r transform data wide to long, add date column, include=FALSE}
+
+# gather data to long format
+dat_long <- dat %>% gather(MEASURE, VALUE, 3:8)
+
+# add date column
+dat_long <- dat_long %>% mutate(DATE = parse_date_time(dat_long$`YYYY-MM`, orders = "ym"))
+
+# ensure VALUES column is numeric
+dat_long$VALUE <- as.numeric(dat_long$VALUE)
+
+# set MEASURES column to factors
+dat_long$MEASURE <- as.factor(dat_long$MEASURE)
+```
+
+```{r plot CPI~time, include = FALSE}
+
+plotCPI <- dat_long %>% filter(str_detect(MEASURE, "CPI_")) %>% 
+    ggplot(aes(y = VALUE, x = DATE, color = MEASURE)) +
+    geom_line(show.legend = FALSE) +
+    theme_minimal() + 
+    ylab("CPI") +
+    xlab("") +
+    geom_dl(aes(label=MEASURE), method=list("last.points", cex = .5)) +
+    scale_x_datetime(expand = c(0.2,0))
+```
+
+```{r plot LOGP~time, include = FALSE}
+
+plotLOGP <- dat_long %>% filter(str_detect(MEASURE, "LOGP")) %>% 
+    ggplot(aes(y = VALUE, x = DATE, color = MEASURE)) +
+    geom_line(show.legend = FALSE) +
+    theme_minimal() + 
+    ylab("log(CPI)") +
+    xlab("") +
+    geom_dl(aes(label=MEASURE), method=list("last.points", cex = .5)) +
+    scale_x_datetime(expand = c(0.2,0))
+```
+
+```{r display CPI and log(CPI) plots together, echo = FALSE}
+plot_grid(plotCPI, plotLOGP)
+```
+Looking at the plots for the time series for CPI and log(CPI), we can see that both plots are very similar.  For both the CPI and log(CPI) plots, we can see that prices seem to steadily increase over time and that there appears to be a correlation between USA and EURO prices.      
+```{r plot DP~time, echo = FALSE}
+
+plotDP <- dat_long %>% filter(str_detect(MEASURE, "DP")) %>% 
+    ggplot(aes(y = VALUE, x = DATE, color = MEASURE)) +
+    geom_line(na.rm = TRUE) + 
+    theme_minimal() +
+    ylab("1st difference log(CPI)") +
+    xlab("") +
+    ggtitle("Monthly inflation series") +
+    guides(color = guide_legend(reverse = TRUE))
+    
+plotDP    
+```
+For the monthly inflation series plot, again we can see there appears to be a correlation between US and EU inflation, but different regions have greater swings up and down at different times--i.e. both regions move in fairly similar ways early on, but the U.S. experiences greater fluctuation in the middle period, and the E.U. experiencing greater fluctuation towards the end of this series. All in all, the series looks rather stationary.  
+  
+### (b) Perform the Augmented Dickey-Fuller (ADF) test for the two $log(CPI)$ series. In the ADF test equation, include a constant $(\alpha)$, a deterministic trend term ($\beta_t$), three lags of $DP = \Delta log(CPI)$ and, of course, the variable of interest, $log(CPI_{t-1}$. Report the coefficient of $log(CPI_{t-1}$ and its standard error and t-value, and draw your conclusion.  
+
+As indicated in the lectures, the Augmented Dickey-Fuller (ADF) test for data with a clear trend direction takes the form: 
+$$
+\Delta y_t = \alpha + \beta t + \rho y_{t-1} + \gamma_1 \Delta y_{t-1} +...+ \gamma_L \Delta y_{t-L} + \varepsilon_t  
+$$
+Where we reject the hull hypothesis ($H_o$) of non-stationarity if the test statistic < -3.5.  
+  
+When we perform the ADF test for $log(CPI)$ for the US series, we get:  
+```{r ADF test manual for LOGPUSA, echo = TRUE}
+# manually, we can check for the coefficient of interest 
+mod1a <- lm(DPUSA~TREND+lag(LOGPUSA,1)+ 
+             lag(DPUSA,1)+lag(DPUSA,2)+lag(DPUSA,3), 
+           data = dat)
+summary(mod1a)$coefficients
+```
+
+```{r ADF test for LOGPUSA, echo = TRUE}
+# here we can double check with the adf.test() function
+adf.test(dat$LOGPUSA, alternative = "stationary", k = 3)
+```
+When we perform the ADF test for $log(CPI)$ for the EURO series, we get:
+
+```{r ADF test manual for LOGPEUR, echo = TRUE}
+# manually, we can check for the coefficient of interest 
+mod1b <- lm(DPEUR~TREND+lag(LOGPEUR,1)+ 
+             lag(DPEUR,1)+lag(DPEUR,2)+lag(DPEUR,3), 
+           data = dat)
+summary(mod1b)$coefficients
+```
+
+```{r ADF test for LOGPEUR, echo = TRUE}
+# here we can double check with the adf.test() function
+adf.test(dat$LOGPEUR, alternative = "stationary", k = 3)
+```
+In both cases the test-statistic is greater that -3.5, so we fail to reject the null hypothesis of non-stationarity.  
+  
+### (c) As the two series of $log(CPI)$ are not cointegrated (you need not check this), we continue by modeling the monthly inflation series $DPEUR = \Delta log(CPIEUR)$ for the Euro area. Determine the sample autocorrelations and the sample partial autocorrelations of the this series to motivate the use of the following AR model: $DPEUR_t = \alpha + \beta_1 DPEUR_{t-6} + \beta_2 DPEUR_{t-12} + \varepsilon_t$. Estimate the parameters of this model (sample Jan 2000 - Dec 2010).  
+  
+First, we can determine the sample autocorrelations and the sample partial autocorrelations for the entire $DPEUR$ column vector by using the `acf()` and `pacf()` functions in the `tseries` package:
+```{r calculate all AC and PAC for `dat_sample`, echo = TRUE}
+
+# subset `dat` to keep observations from Jan 2000 - Dec 2010
+dat_sample <- slice(dat, 1:132)
+
+# convert relevant column to numeric
+dat_sample$DPEUR <- as.numeric(dat_sample$DPEUR)
+
+# create table to store autocorrelation (ac) results
+n <- nrow(dat_sample) - 1
+ac <- tibble(lag = 1:n)
+ac$AC <- NA    
+ac$PAC <- NA
+
+# loop through $DPEUR with acf() and pacf() and store results in table (ac)
+for (i in 1:n) {
+    acf <- acf(dat_sample$DPEUR, lag.max = i, na.action = na.pass, 
+               plot = FALSE, demean = TRUE)
+    
+    pcf <- pacf(dat_sample$DPEUR, lag.max = i, na.action = na.pass, 
+                plot = FALSE, demean = TRUE)
+    
+    ac[i, 1] <- i
+    ac[i, 2] <- acf$acf[i + 1, 1, 1]
+    ac[i, 3] <- pcf$acf[i + 0, 1, 1]
+}
+```
+After determining the sample autocorrelations (AC) and partial autocorrelations (PAC), we can check to see what are the largest values:
+```{r print ac top 10 coefficients, echo = TRUE}
+
+ac %>% group_by(PAC) %>% arrange(desc(PAC)) %>% head(., 10)
+
+```
+  
+Here we can see that lag 12 and lag 6 have the highest PAC values.  
+  
+Finally, we can estimate the parameters of our model using the `ar()` function: 
+```{r estimate AR parameters to order 12, echo = TRUE}
+
+ar(dat_sample$DPEUR[2:131], order.max = 12, method = "ols")
+```
+From these results, are parameter estimates for this model would be:  
+$$
+DPEUR_t = \alpha + 0.194 DPEUR_{t-6} + 0.517 DPEUR_{t-12} + \varepsilon_t
+$$
+  
+### (d) Extend the AR model of part (c) by adding lagged values of monthly inflation in the USA at lags 1, 6, and 12. Check that the coefficient at lag 6 is not significant, and estimate the ADL model $DPEUR_t = \alpha + \beta_1 DPEUR_{t-6} + \beta_2 DPEUR_{t-12} + \gamma_+ DPUSA_{t-1} + \gamma_2 DPUSA_{t-12} + \varepsilon_t$ (sample Jan 2000 - Dec 2010).  
+  
+```{r add lag(DPUSA, 1)+lag(DPUSA, 6)+lag(DPUSA, 12) to model, echo = TRUE}
+
+mod2 <- lm(DPEUR~lag(DPEUR, 6) + lag(DPEUR, 12) + 
+            lag(DPUSA, 1) + lag(DPUSA, 6) + lag(DPUSA, 12), 
+           data = dat_sample)
+
+summary(mod2)$coefficients
+```
+According the regression results, we can see that the coefficient for $DPUSA_{t-6}$ has a p-value of 0.308 and is not significant, so we can drop this term from our model.  When we re-run the regression without this term, we have:   
+```{r remove lag(DPUSA, 6) from previous model, echo = TRUE}
+
+# here we drop the insignificant term from the previous model and re-run
+mod3 <- lm(DPEUR~lag(DPEUR, 6) + lag(DPEUR, 12) + 
+             lag(DPUSA, 1) + lag(DPUSA, 12), 
+           data = dat_sample)
+
+summary(mod3)$coefficients
+```
+  
+### (e) Use the models of parts (c) and (d) to make two series of 12 monthly inflation forecasts for 2011. At each month, you should use the data that are then available, for example, to forecast inflation for September 2011 you can use the data up to and including August 2011. However, do not re-estimate the model and use the coefficients as obtained in parts (c) and (d). For each of the two forecast series, compute the values of the room mean squared error (RMSE), mean absolute error (MAE), and the sum of the forecast errors (SUM). Finally, give your interpretation of the outcomes.  
+  
+For 2011, the actual values of $DPEUR$ are already given in the original data for this exercise.  We can add the forecasted values for 2011 for the AR and ADL model by using the formulas we derived in parts (c) and (d), where:
+
+\begin{align*}
+\widehat{DPEUR_t} &= 0 + 0.194\cdot DPEUR_{t-6} + 0.517\cdot DPEUR_{t-12} + \varepsilon_t \quad &&\text{AR model} \\
+\widehat{DPEUR_t} &= 0 + 0.169 \cdot DPEUR_{t-6} + 0.655\cdot DPEUR_{t-12} + 
+   \quad &&\text{ADL model} \\
+  &\quad 0.233\cdot DPUSA_{t-1} - 0.226\cdot DPUSA_{t-12} + \varepsilon_t 
+\end{align*}
+  
+```{r calculate predicted values for AR and ADL models, echo = TRUE}
+
+# First we create a table to store the results of our respective models
+nn <- 133:144
+
+dat_2011 <- tibble(TREND = dat$TREND[nn], DPEUR_actual = dat$DPEUR[nn])
+dat_2011$AR_predicted <- NA    
+dat_2011$ADL_predicted <- NA
+
+# Next we can loop through the relevant `TREND` numbers for 2011 and save
+# the predicted values for the AR and ADL models to our table
+for (i in 1:length(nn)) {
+  AR_temp <- (0 + (0.194*dat$DPEUR[nn[i]-6]) + (0.517*dat$DPEUR[nn[i]-12]))
+  
+  ADL_temp <- (0 + (0.169*dat$DPEUR[nn[i]-6]) + (0.655*dat$DPEUR[nn[i]-12]) +
+                 (0.233*dat$DPUSA[nn[i]-1]) - (0.226*dat$DPUSA[nn[i]-12]))
+               
+  dat_2011[i, 3] <- AR_temp
+  
+  dat_2011[i, 4] <- ADL_temp
+}
+```
+
+```{r display dat_2011 results, echo = TRUE, results = "asis"}
+# display dat_20111  results 
+knitr::kable(dat_2011)
+```
+    
+From here, we can easily calculate the RMSE, MAE and SUM of our models: 
+```{r calculate RMSE, MAE, SUM for AR and ADL models, echo = TRUE}
+
+# calculate values for AR model
+RMSE_AR = sqrt(mean((dat_2011$DPEUR_actual - dat_2011$AR_predicted)^2))
+MAE_AR =  mean(abs(dat_2011$DPEUR_actual - dat_2011$AR_predicted))
+SUM_AR =  sum(dat_2011$DPEUR_actual - dat_2011$AR_predicted)
+
+# calculate values for ADL model
+RMSE_ADL = sqrt(mean((dat_2011$DPEUR_actual - dat_2011$ADL_predicted)^2))
+MAE_ADL =  mean(abs(dat_2011$DPEUR_actual - dat_2011$ADL_predicted))
+SUM_ADL =  sum(dat_2011$DPEUR_actual - dat_2011$ADL_predicted)
+```  
+
+Thus, for our AR model, we find that:  
+| RMSE =  `r round(RMSE_AR, 4)`  
+| MAE = `r round (MAE_AR, 4)`  
+| SUM = `r round (SUM_AR, 4)` 
+    
+For our ADL model, we find that:  
+| RMSE =  `r round(RMSE_ADL, 4)`  
+| MAE = `r round (MAE_ADL, 4)`  
+| SUM = `r round (SUM_ADL, 4)`  
+  
+Comparing the two models, it appears that the ADL model performs better as it has lower error values across all three measures.  
+    
+```{r reshape dat_2011 for plotting, include = FALSE}
+
+plot_2011 <- dat_2011 %>% gather(model, DPEUR, 2:4)
+
+plot_2011$model <- as.factor(plot_2011$model)
+```
+
+```{r plot model performance vs. actual 2011, echo = TRUE}
+
+plot_2011 %>% ggplot(aes(y=DPEUR, x=TREND, color = model)) + 
+  geom_line() + 
+  theme_minimal() + 
+  ggtitle("2011 Monthly Forecasts vs. Actual")
+```
+
+

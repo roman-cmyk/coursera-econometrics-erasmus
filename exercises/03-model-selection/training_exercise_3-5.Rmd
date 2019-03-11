@@ -1,0 +1,222 @@
+---
+title: 'Week 3: Model Specification, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+library(car)
+```
+
+```{r load data for exercise, include=FALSE}
+TrainExer35 <- read_excel("../../data/TrainExer 3-5.xlsx")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 3.5  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer35`and requires a computer.  
+* The dataset `TrainExer35` is [available on the website](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Module%203/TrainExer%203-5.xlsx).  
+  
+##Questions  
+  
+(a) Replicate the $R^2$ values of [slide 7 from lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf). In particular, show that a regression of the log equity premium (the variable $LogEqPrem$ in the data file) on a constant and all five explanatory variables gives an $R^2$ of 10.8%, and that a regression of the log equity premium on a constant and only book-to market gives an $R^2$ of 6.3%. Then, based on these values, argue whether the additional four variables are significant when comparing the full with the book-to-market only model.   
+  
+(b) Replicate the RESET statistic of [slide 8 of Lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf).  Proceed in the following steps. First regress the log equity premium on a constant and the book-to-market ratio. Then store the fitted log equity premium based on the output from this regression. Finally, regress the log equity premium on a constant, the book-to-market ration, and the square of the fitted log equity premium that was stored in the previous step. The RESET test statistic is the statistic of an F-test on the fitted log equity premium parameter.       
+      
+(c) Replicate the Chow break statistic of [slide 8 of Lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf). Proceed in the following steps. First regress the log equity premium on a constant and the book-to-market ratio and store the sum of squared residuals. Then perform the same regression for both the subsample of observations over 1927-1979, and the subsample of oberservations over 1980-2013. For both regressions, store the sum of squared residuals. Use these sum of squared residuals to calculate the Show break statistic.      
+       
+(d) Replicate the Chow forecast statistic of [slide 8 of Lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf). No new regression is required, you should be able to base this result on the regressions you have run so far.  
+  
+***
+\pagebreak  
+  
+##Answers
+
+###(a) Replicate the $R^2$ values of [slide 7 from lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf). In particular, show that a regression of the log equity premium (the variable $LogEqPrem$ in the data file) on a constant and all five explanatory variables gives an $R^2$ of 10.8%, and that a regression of the log equity premium on a constant and only book-to market gives an $R^2$ of 6.3%. Then, based on these values, argue whether the additional four variables are significant when comparing the full with the book-to-market only model.   
+  
+First we regress `LogEqPrem` on all explanatory variables as described:    
+```{r regress LogEqPrem on all explanatory variables, echo = TRUE}
+
+#regress LogEqPrem~BookMarket+NTIS+DivPrice+EarnPrice+Inflation
+mod1 <- lm(LogEqPrem~BookMarket+NTIS+DivPrice+EarnPrice+Inflation, data = TrainExer35)  
+summary(mod1)
+```
+Next, we regress `LogEqPrem` only on `BookMarket`:
+```{r regress Log EqPrem~BookMarket, echo = TRUE}
+
+#regress LogEqPrem~BookMarket
+mod2 <-  lm(LogEqPrem~BookMarket, data = TrainExer35)  
+summary(mod2)
+```  
+Looking at the results of our regression, for our first model, we have an R-squared value: $R_1^2$=`r summary(mod1)$r.squared`  
+  
+In our second model, ignoring all of the other variables apart from `BookMarket`, we have an R-squared value: $R_0^2$=`r summary(mod2)$r.squared `  
+To compare the two models, we can use an F-test, which can be calculated as: 
+\begin{equation}
+F = \frac{(SSR_{R} - SSR_{UR})/q}{(SSR_{UR})/(n-k)}
+\end{equation}
+  
+Or in it's alternative form, using R-squared:  
+\begin{equation}
+F = \frac{(R_{UR}^2 - R_R^2)/q}{(1-R_{UR}^2)/(n-k)}
+\end{equation}
+
+Using the alternative form (2) and substituting in our values for $R_1^2$ and $R_0^2$, we find that:  
+$$
+F = \frac{(0.1084 - 0.06335)/4}{(1 - 0.1084)/(87 - 6)} = \frac{0.0112625}{0.01100741} = 1.023174
+$$  
+This gives us an F-statistic value of: 1.023174  
+  
+To calculate the p-value, we can use the `pf()` function in `R`, which takes the form: `pf(q, df1, df2, ncp, lower.tail = TRUE, log.p = FALSE)`, where `df1` is `q` and `df2` is `n-k`. Substituting in our values for F, q, and n-k, we find that:
+```{r calculate p-value, echo = TRUE}
+
+pval <- pf(1.023174, 4, 81, lower.tail = FALSE)
+
+paste("p-value =", round(pval,3))  
+```
+In this case, with our p-value of `r pval` being so large, we cannot reject the null hypothesis ($H_0$), which states that the effect of the extra regressors we added to our model (i.e. the unrestricted model) is zero. Given this, we should stick with the restricted version of our model, which only uses a single regressor, `BookMarket`. 
+  
+Lastly, we can check all of this quickly by using the `linearHypothesis()` function in the `car` package:  
+```{r run F-test on our two models, echo = TRUE}
+
+Hnull <- c("NTIS=0", "DivPrice=0", "EarnPrice=0", "Inflation=0")
+  
+linearHypothesis(mod1, Hnull)
+```
+  
+###(b) Replicate the RESET statistic of [slide 8 of Lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf).  Proceed in the following steps. First regress the log equity premium on a constant and the book-to-market ratio. Then store the fitted log equity premium based on the output from this regression. Finally, regress the log equity premium on a constant, the book-to-market ratio, and the square of the fitted log equity premium that was stored in the previous step. The RESET test statistic is the statistic of an F-test on the fitted log equity premium parameter.  
+  
+To quickly summarize, the [Ramsey RESET test](https://en.wikipedia.org/wiki/Ramsey_RESET_test) can be described as such:  
+
+>In statistics, the Ramsey Regression Equation Specification Error Test (RESET) test is a general specification test for the linear regression model. More specifically, it tests whether non-linear combinations of the fitted values help explain the response variable. The intuition behind the test is that if non-linear combinations of the explanatory variables have any power in explaining the response variable, the model is misspecified in the sense that the data generating process might be better approximated by a polynomial or another non-linear functional form.  
+    
+Thus, in order to recreate the RESET statistic from slide 8 of Lecture 3.5, we will run the regression of our various models and use their respective sum of squared residuals ($SSR$) to calculate an F-statistic using formula (1) from above.  
+
+Following the steps in this question, first we regress `LogEqPrem` by `BookMarket` and store the fitted values:
+```{r regress LogEqPrem~BookMarket, stored fitted values, echo = TRUE}
+
+#regress LeEqPrem~BookMarket
+mod3 <- lm(LogEqPrem~BookMarket, data = TrainExer35) 
+
+#extract fitted values and save to vector
+mod3_fitted <- predict(mod3)  
+```  
+Next, we regress `LogEqPrem` by `BookMarket` and the square of the fitted value from the previous regression:  
+```{r regress previous model with square of fitted values, echo = TRUE}
+
+#add fitted values to data table
+TrainExer35 <- cbind(TrainExer35, mod3_fitted) 
+
+#transform fitted values column
+TrainExer35 <-TrainExer35 %>% mutate(mod3_fitted2 = mod3_fitted^2)  
+
+#re-run regression including tranformed column
+mod4 <- lm(LogEqPrem~BookMarket+mod3_fitted2, data = TrainExer35) 
+```  
+The sum of squared residuals from our respective models can be calculated using matrix algebra, where $SSR = e'e$ or using the `sum()` function over the form $\sum e^2$:  
+```{r calculate SSR_UR and SSR_R, echo = TRUE}
+
+SSR_R <- sum(residuals(mod3)^2)
+SSR_UR <- sum(residuals(mod4)^2)
+```  
+We can now use these values to calculate our F-statistic by hand, subbing in to get: 
+$$
+F = \frac{(SSR_{R} - SSR_{UR})/q}{(SSR_{UR})/(n-k)} = \frac{(2.991714 - 2.87383)/1}{2.87383/(87-3)} = 3.445665
+$$
+Using this F-value, we can calculate the p-value of the RESET statistic: 
+```{r calculate p-value for RESET stat, echo = TRUE}
+
+p_RESET <- pf(3.445665, 1, 84, lower.tail = F)  
+
+paste("p_RESET =", round(p_RESET,3))
+```
+  
+Or more simply, we could have just used the `linearHypothesis()` function once again on our unrestricted model as such:
+```{r run F-test to determine significnace of polynomial, echo = TRUE}
+
+linearHypothesis(mod4, "mod3_fitted2=0")
+```
+      
+###(c) Replicate the Chow break statistic of [slide 8 of Lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf). Proceed in the following steps. First regress the log equity premium on a constant and the book-to-market ratio and store the sum of squared residuals. Then perform the same regression for both the subsample of observations over 1927-1979, and the subsample of oberservations over 1980-2013. For both regressions, store the sum of squared residuals. Use these sum of squared residuals to calculate the Chow break statistic.      
+  
+Again, to quote Wiki, the [Chow break test](https://en.wikipedia.org/wiki/Chow_test) can be described as follows:  
+
+>The Chow test, proposed by econometrician Gregory Chow in 1960, is a test of whether the true coefficients in two linear regressions on different data sets are equal. In econometrics, it is most commonly used in time series analysis to test for the presence of a structural break at a period which can be assumed to be known a priori (for instance, a major historical event such as a war). In program evaluation, the Chow test is often used to determine whether the independent variables have different impacts on different subgroups of the population.  
+
+The Chow test statistic is given by:
+$$
+F_{Chow} = \frac{(S_C - (S_1 + S_2))/k}{(S_1 + S_2)/(N_1 +N_2 - 2k)}
+$$
+Where, $S_C$ is the sum of squared residuals from the combined data, $S_1$ is the sum of squared residuals from the first group, and $S_2$ is the sum of squared residuals from the second group. $N_1$ and $N_2$ are the number of observations in each group and $k$ is the total number of parameters.  
+     
+Following the steps outlined in the question, first we regress `LogEqPrem` on `BookMarket` and store the SSR:
+```{r calcuate SSR_C, echo = TRUE}
+
+mod5 <- lm(LogEqPrem~BookMarket ,data = TrainExer35)  
+ 
+SSR_C <- sum(residuals(mod5)^2)
+```  
+Next, we perform the same regression for both subamples of observations from 1927-1979 and 1980-2013 and store their respective SSRs:  
+```{r calculate SSR_1 and SSR_2, echo = TRUE}
+
+#create two subsets of TrainExer35 according to year ranges
+TrainExer35_1 <- TrainExer35 %>% filter(Year <= 1979) 
+TrainExer35_2 <- TrainExer35 %>% filter(Year >= 1980)  
+  
+#run same regression on subsets 
+mod5_1 <- lm(LogEqPrem~BookMarket ,data = TrainExer35_1)  
+mod5_2 <- lm(LogEqPrem~BookMarket ,data = TrainExer35_2)  
+
+#save SSRs for subsets
+SSR_1 <- sum(residuals(mod5_1)^2)
+SSR_2 <- sum(residuals(mod5_2)^2)
+```  
+Finally, we can use all of our stored SSRs to calculate the Chow break statistic, where $N_1$ = 53, $N_2$ = 34, and $k$ = 2:  
+```{r calculate Chow test statistic, echo = TRUE}
+#\frac{(S_C - (S_1 + S_2))/k}{(S_1 + S_2)/(N_1 +N_2 - 2k)
+F_Chow <- ((SSR_C - (SSR_1 + SSR_2))/2) / ((SSR_1 + SSR_2)/(53 + 34 - 2*2))
+
+paste("F_Chow =", round(F_Chow,3))
+```
+Using this value, we can calculate the p-value using the `pf()` function as we did before: 
+```{r calculate p-value for Chow stat, echo = TRUE}
+p_Chow <- pf(2.268756, 2, 83, lower.tail = F)  
+
+paste("p_Chow =", round(p_Chow,3))
+```
+    
+###(d) Replicate the Chow forecast statistic of [slide 8 of Lecture 3.5](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Handouts%20slides%20videos/Lecture%203.5-4on1.pdf). No new regression is required, you should be able to base this result on the regressions you have run so far.  
+  
+The F-statistic for the Chow forecast test can be derived using:
+$$
+F_{ChowForecast} = \frac{(SSR_C - SSR_1)/q}{SSR_1/(N_1 - k)}
+$$  
+Using the values we calculated from the previous regressions, we can substitute everything back so that:  
+```{r cacluate Chow forecast stat, echo = TRUE}
+
+#\frac{(SSR_C - SSR_1)/q}{SSR_1/(N_1 - k)}
+F_ChowForecast <- ((SSR_C - SSR_1)/34)/(SSR_1/(53 - 2))
+
+paste("F_ChowForecast =", round(F_ChowForecast,3))
+```
+With this F-stat, we show the p-value for the Chow forecast to be:
+```{r calcuate Chow forecast p-value, echo = TRUE}
+p_ChowForecast <- pf(F_ChowForecast, 34, 51, lower.tail = F)
+
+paste("p_ChowForecast", round(p_ChowForecast, 3))
+```
+
+    

@@ -1,0 +1,244 @@
+---
+title: 'Test Exercise 3'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+library(car)
+library(lmtest)
+library(tseries)
+```
+
+```{r load data for exercise, include=FALSE}
+TestExer3 <- read_excel("../../data/TestExer-3-TaylorRule-round1.xlsx")
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+##Notes:
+
+* See website for how to submit your answers and how feedback is organized.  
+* This exercise uses the datafile [`TestExer3`](https://d3c33hcgiwev3.cloudfront.net/_a367fe65dc319a76cea3558922a4174d_TestExer-3-TaylorRule-round1.xlsx?Expires=1547251200&Signature=dL6u2vESgGLVu9PDiIAaOVhtz-otYr9yzXmsnkfvM-aQ5IR4m411H5njTPdnYFK-TA6YKwwR9vPZTnbPWI5nu0UuQfkbpb5JFsTa64GlVEta0Zw~wV6dHYDSvkXKNyiOdeHMI3SS-r3rg0L0r4l0vLZx1EJCGJKr1W~XMzCOCvk_&Key-Pair-Id=APKAJLTNE6QMUY6HBC5A) and requires a computer.  
+  
+## Goals and skills being used:  
+  
+* Experience the process of model selection.
+* Apply methods to compare models.  
+* Apply tests to evaluate a model.  
+  
+##Questions  
+  
+This test exercise is of an applied nature and uses data that are available in the data file `TestExer3`. We consider the so-called Taylor rule for setting the (nominal) interest rate. This model describes the level of the nominal interest rate that the central bank sets as a function of equilibrium real interest rate and inflation, and considers the current level of inflation and production. Tayor (1993)[^1] considers the model:
+$$
+i_t = r^* + \pi_t + 0.5(\pi_t - \pi^*) + 0.5g_t,
+$$
+with $i_t$ the Federal funds target interest rate at time $t$, $r^*$ the equilibrium real federal funds rate, $\pi_t$ a measure of inflation, $\pi^*$ the target inflation rate and $g_t$ the output gap (how much actual output deviates from potential output). We simplify the Taylor rule in tow manners. First we avoid determining $r^*$ and $\pi^*$ and simply add an intercept to the model to capture these two variables (and any other deviation in the means). Second, we consider production $y_t$ rather than the output gap. In this form the Taylor rule is:  
+
+\begin{equation}
+i_t = \beta_1 + \beta_2\pi_t + \beta_3y_t + \varepsilon_t.
+\end{equation}
+
+Monthly data are available for the USA over the period 1960 through 2014 for the following variables[^2]:  
+
+* INTRATE: Federal funds interest rate
+* INFL: Inflation
+* PROD: Production
+* UNEMPL: Unemployment
+* COMMPRI: Commodity prices
+* PCE: Personal consumption expenditure
+* PERSINC: Personal income
+* HOUST: Housing starts  
+  
+(a) Use general-to-specific to come to a model. Start by regressing the federal funds rate on the other 7 variables and eliminate 1 variable at a time.
+  
+(b) Use specific-to-general to come to a model. Start by regressing the federal funds rate on only a constant and add 1 variable at a time. Is the model the same as in (a)?  
+  
+(c) Compare your model from (a) and the Taylor rule of equation (1). Consider $R^2$, $AIC$ and $BIC$. Which of the models do you prefer?  
+  
+(d) Test the Taylor rule of equation (1) using the RESET test, Chow break and forecast test (with January 1980 as the break date in both tests) and a Jarque-Bera test. What do you conclude?  
+    
+***
+\pagebreak  
+  
+##Answers
+
+###(a) Use general-to-specific to come to a model. Start by regressing the federal funds rate on the other 7 variables and eliminate 1 variable at a time.   
+
+```{r regress, gen-to-specific, results="asis", echo = TRUE}
+
+#regress all variables, remove lowest absolute t-value (or highest p-value) each round until all variables are significant
+mod1 <- lm(INTRATE~INFL+PROD+UNEMPL+COMMPRI+PCE+PERSINC+HOUST, data = TestExer3)
+mod2 <- lm(INTRATE~INFL+PROD+COMMPRI+PCE+PERSINC+HOUST, data = TestExer3)
+mod3 <- lm(INTRATE~INFL+COMMPRI+PCE+PERSINC+HOUST, data = TestExer3)
+
+#print results from general-to-specific regressions
+stargazer(mod1, mod2, mod3, title="General-to-specific model specification",  header = FALSE)
+```
+   
+###(b) Use specific-to-general to come to a model. Start by regressing the federal funds rate on only a constant and add 1 variable at a time. Is the model the same as in (a)?     
+
+Here we follow a similar pattern to the specific-to-general method but in reverse, where we regress each variable one at a time, then add the one with the highest absolute t-value (lowest p-value) to our model at the end, and then repeat for as many rounds needed until no significant variables can be added anymore:
+```{r Round1: run general-to-specific approach, echo = TRUE}
+
+#Round 1: regress INTRATE by all columns apart from first two 
+R1 <- lapply(TestExer3[,-c(1,2)], function(x) summary(lm(TestExer3$INTRATE ~ x)))
+
+#display coefficients
+lapply(R1, coef)  
+```
+Here we can see that the absolute t-value for $INFL$ is the largest among the seven regressors, so we add that one to our model and re-run the remaining 6 regressors individually in a second round and, again, look for the largest t-value:  
+```{r Round 2: add INFL, re-run general-to-specific approach, echo = TRUE}
+
+#Round 1: regress INTRATE~INFL + all columns apart from first three 
+R2 <- lapply(TestExer3[,-c(1,2,3)], function(x) summary(lm(TestExer3$INTRATE~TestExer3$INFL+ x)))
+
+#display coefficients
+lapply(R2, coef)  
+```
+After the second round, we can see that $PERSINC$ has the highest t-value, so we can add this to our model and re-run the process. 
+  
+*(Note: from here on out, I will stop displaying the regression results to save space)*
+  
+After our third round, we find that $PCE$ has the highest t-value, so we add it to our model.
+  
+After round four, we find that $HOUST$ has the highest t-value, so we add it to the model.  
+  
+After round give, we find that $COMMPRI$ has the highest t-value, so we add it to the model.  
+  
+After round six, the only remaining variables, $PROD$ and $UNEMPL$ have low t-values that are not significant, so we stop here.  Looking at part (a), we can see that, in the end, we arrived at the same model using this method.
+```{r round 3, include = FALSE}
+R3 <- lapply(TestExer3[,-c(1,2,3,8)], function(x) summary(lm(TestExer3$INTRATE~TestExer3$INFL+TestExer3$PERSINC+ x)))
+
+#display coefficients
+lapply(R3, coef)  
+```
+```{r round 4, include = FALSE}
+R4 <- lapply(TestExer3[,-c(1,2,3,7,8)], function(x) summary(lm(TestExer3$INTRATE~TestExer3$INFL+TestExer3$PERSINC+ TestExer3$PCE+ x)))
+
+#display coefficients
+lapply(R4, coef)  
+```
+```{r round 5, include = FALSE}
+R5 <- lapply(TestExer3[,-c(1,2,3,7,8,9)], function(x) summary(lm(TestExer3$INTRATE~TestExer3$INFL+TestExer3$PERSINC+ TestExer3$PCE + TestExer3$HOUST+ x)))
+
+#display coefficients
+lapply(R5, coef)  
+```
+```{r round 6, include = FALSE}
+R6 <- lapply(TestExer3[,-c(1,2,3,6,7,8,9)], function(x) summary(lm(TestExer3$INTRATE~TestExer3$INFL+TestExer3$PERSINC+TestExer3$PCE + TestExer3$HOUST+TestExer3$COMMPRI+ x)))
+
+#display coefficients
+lapply(R6, coef)  
+```
+  
+###(c) Compare your model from (a) and the Taylor rule of equation (1). Consider $R^2$, $AIC$ and $BIC$. Which of the models do you prefer?  
+    
+To quickly recap, using the variable names from our dataset, the two models under consideration are:  
+
+\begin{align*}
+INTRATE &= \beta_1 + \beta_2 INFL + \beta_3 COMMPRI + \beta_4 PCE + \beta_5 PERSINC + \beta_6 HOUST + \varepsilon_t. \quad &&\text{General-to-specific} \\ 
+INTRATE &= \beta_1 + \beta_2 INFL + \beta_3 PROD + \varepsilon_t \quad &&\text{Taylor rule} 
+\end{align*}
+
+After running the regressions for the two models, we can compare the relevant statistics:
+```{r regress Taylor model, compare with mod3 from part (a), results="asis", echo = TRUE}
+
+#run Taylor-model regression
+mod_Taylor <- lm(INTRATE~INFL+PROD, data = TestExer3)
+
+#AIC and BIC are not calculated automatically with the lm() function in R
+#add AIC and BIC values to mod3
+mod3$AIC <- AIC(mod3)
+mod3$BIC <- BIC(mod3)
+
+#add AIC and BIC values to mod_Taylor
+mod_Taylor$AIC <- AIC(mod_Taylor)
+mod_Taylor$BIC <- BIC(mod_Taylor)
+
+#display and compare summary of both models
+stargazer(mod3, mod_Taylor, title="Model (a) vs. Taylor model", header = FALSE, float = FALSE)
+```
+Looking at the two models, we can see that the AIC and the BIC are lower for the model we derived in part (a).  Additionally, the model from (a) has a higher $R^2$ valued, so for all three statistics, model (a) is preferred over the Taylor rule model.  
+  
+###(d) Test the Taylor rule of equation (1) using the RESET test, Chow break and forecast test (with January 1980 as the break date in both tests) and a Jarque-Bera test. What do you conclude? 
+  
+We can calculate the RESET test statistic as follows:
+```{r calculate RESET test statistic, echo = TRUE}
+
+# using `resettest()` from `lmtest` package
+resettest(mod_Taylor, power = 2, type = "fitted", data = TestExer3)
+```
+  
+We can calculate the Chow break statistic as follows:
+```{r calculate Chow break, echo = TRUE}
+
+# Save SSR for complete model
+SSR_C <- sum(residuals(mod_Taylor)^2)
+
+# Split OBS column in TestExer3 into Year and Month
+
+TestExer3 <- TestExer3 %>% mutate(Year = str_split_fixed(TestExer3$OBS, ":", n = 2)[, 1]) 
+TestExer3$Year <- as.numeric(TestExer3$Year)
+
+# Split TestExer3 into two subsets using Jan.1980 as the break date
+
+TestExer3_1 <- TestExer3 %>% filter(OBS < 1980) 
+TestExer3_2 <- TestExer3 %>% filter(OBS >= 1980)  
+  
+# Run same regression on subsets 
+mod_Taylor_1 <- lm(INTRATE~INFL+PROD, data = TestExer3_1)  
+mod_Taylor_2 <- lm(INTRATE~INFL+PROD, data = TestExer3_2)  
+
+# Save SSRs for subsets
+SSR_1 <- sum(residuals(mod_Taylor_1)^2)
+SSR_2 <- sum(residuals(mod_Taylor_2)^2)
+
+# Calculate F_Chow statistic with:
+# \frac{(S_C - (S_1 + S_2))/k}{(S_1 + S_2)/(N_1 +N_2 - 2k)
+
+F_Chow <- ((SSR_C - (SSR_1 + SSR_2))/2) / ((SSR_1 + SSR_2)/(240 + 420 - 2*3))
+
+# Calculate p-value
+p_Chow <- pf(F_Chow, 3, 660, lower.tail = F)  
+
+# Print results
+paste("F_Chow =", round(F_Chow,3))
+paste("p_Chow =", round(p_Chow,3))
+```
+  
+We can calculate the Chow forecast statistic as follows:
+```{r Calculate F_ChowForecast, echo = TRUE}
+
+# Formula is \frac{(SSR_C - SSR_1)/q}{SSR_1/(N_1 - k)}
+F_ChowForecast <- ((SSR_C - SSR_1)/420)/(SSR_1/(240 - 3))
+p_ChowForecast <- pf(F_ChowForecast, 420, 237, lower.tail = F)
+
+# Print results
+paste("F_ChowForecast =", round(F_ChowForecast,3))
+paste("p_ChowForecast =", round(p_ChowForecast, 3))
+```
+
+Finally, we can calculate Jarque-Bera statistic as follows:
+```{r Calculate Jarque Bera, echo = TRUE}
+# using `jarque.bera.test()` from `Tseries` package
+jarque.bera.test(residuals(mod_Taylor))
+```
+
+Looking over our results from the four tests, we can see that we do not reject the null hypothesis for the RESET test, but we do reject the null for the Chow break, Chow forecast and Jarque-Bera (JB) tests.  
+This implies that our Taylor rule model is *not* a polynomial, and that it *has* a structural break and is *not* normally distributed.  
+
+    
+
+[^1]: “Discretion Versus Policy Rules in Practice”, Carnegie-Rochester Conference Series on Public Policy 39, pages 1455-1508.  
+  
+[^2]: The data are from the St. Louis Federal Reserve Economic Dataset (FRED), with IDs FEDFUNDS, CPIAUCSL, INDPRO, PAYEMS, NAPMPRI, PCE, A229RX0 and HOUST respectively (all percent change from a year ago, except for the Federal funds rate).  

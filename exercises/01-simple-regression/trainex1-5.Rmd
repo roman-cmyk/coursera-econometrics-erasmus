@@ -1,0 +1,221 @@
+---
+title: 'Week 1: Simple Regression, Training Exercise 1.5'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasumus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+```
+
+```{r load data for exercise, include=FALSE}
+TrainExer15 <- read_tsv("../../data/TrainExer15.txt")
+```
+
+#Questions  
+In Lecture 1.5, we applied simple regression for data on winning times on the Olympic 100 meter (athletics). We computed the regression coefficients $a$ and $b$ for two trend models, one with a linear trend and one with a nonlinear trend. In a test question, you created forecasts of the winning times for both men and women in 2008 and 2012. Of course, you can also forecast further ahead in the future. In fact, it is even possible to predict when men and women would run equally fast, if the current trends persist.  
+  
+  (a) Show that the linear trend model predicts equal winning times at around 2140.  
+    
+  (b) Show that the nonlinear trend model predicts equal winning times at around 2192.  
+    
+  (c) Show that the linear trend model predicts equal winning times of approximately 8.53 seconds.  
+    
+  (d) Comment on these outcomes and on the underlying regression models.  
+    
+***    
+
+#Answers  
+  
+ (a) Show that the linear trend model predicts equal winning times at around 2140.  
+For the sake of the exercise, we'll compute the linear regression "by hand", using the formulas:  
+$$
+b = \frac{\sum_{i=1}^n (x_i-\bar{x})(y_i-\bar{y})}{\sum_{i=1}^n (x_i-\bar{x})^2}
+$$ 
+
+$$
+a = \bar{y} - b\bar{x}
+$$ 
+First, we can solve for solve for $b$ and $a$ for the men:  
+```{r solve, echo = FALSE}
+xbar_men <- mean(TrainExer15$Game)
+ybar_men <- mean(TrainExer15$Winmen)
+
+b_men <- sum((TrainExer15$Game - xbar_men)*(TrainExer15$Winmen - ybar_men)) / sum((TrainExer15$Game - xbar_men)^2)
+
+a_men <- ybar_men - (b_men*xbar_men)
+
+b_men
+a_men
+```
+Next, we repeat the steps to get $b$ and $a$ for the women:
+```{r solve for b and a for women, echo = FALSE}
+xbar_women <- mean(TrainExer15$Game)
+ybar_women <- mean(TrainExer15$Winwomen)
+
+b_women <- sum((TrainExer15$Game - xbar_women)*(TrainExer15$Winwomen - ybar_women)) / sum((TrainExer15$Game - xbar_women)^2)
+
+a_women <- ybar_women - (b_women*xbar_women)
+
+b_women
+a_women
+```
+Using algebra, we can find what year the men's time and women's time will be equal by setting the two equations equal to one another and solivng for $X$ where:
+$$
+Y_{men} = 10.386 - 0.38G
+$$
+$$
+Y_{women} = 11.606 - .063G  
+$$
+$$
+10.386 - .038G = 11.606 - .063G
+$$
+Solving for $G$ gives us the game number: **48.8**
+
+To convert game number to year, we can use: $1948 + (G-1) * 4 = Year$  
+
+Subbing in our $G$ value, we get: $1948 + (48.8-1) * 4 = 2139.2$, or year $2140$  
+    
+    
+  (b) Show that the nonlinear trend model predicts equal winning times at around 2192.    
+    
+For part (b), we can model the data along a non-linear trend using the following formula:  
+$$
+W_i = \gamma e^{\beta G_i}
+$$
+Which we can re-write in linear form as:  
+$$
+log(W_i) = \alpha + \beta G + \varepsilon_i
+$$
+(with $G_i$ and $\alpha = log(\gamma)$)  
+  
+To calculate these non-linear values, we need to first take the log of the win times for both men and women, and then we can deduce the new $\alpha$ and $\beta$ values as before.
+```{r solve for b and a for men, echo = FALSE}
+#first take the log for Winmen and Winwomen
+TrainExer15 <- TrainExer15 %>% mutate(Winmen_log = log(Winmen), Winwomen_log = log(Winwomen))
+
+#next compute the beta and alpha values for the men
+xbar_men <- mean(TrainExer15$Game)
+ybar_men_log <- mean(TrainExer15$Winmen_log)
+
+b_men_log <- sum((TrainExer15$Game - xbar_men)*(TrainExer15$Winmen_log - ybar_men_log)) / sum((TrainExer15$Game - xbar_men)^2)
+
+a_men_log <- ybar_men_log - (b_men_log*xbar_men)
+
+b_men_log
+a_men_log
+
+#next compute the new beta and alpha values for the women
+xbar_women <- mean(TrainExer15$Game)
+ybar_women_log <- mean(TrainExer15$Winwomen_log)
+
+b_women_log <- sum((TrainExer15$Game - xbar_women)*(TrainExer15$Winwomen_log - ybar_women_log)) / sum((TrainExer15$Game - xbar_women)^2)
+
+a_women_log <- ybar_women_log - (b_women_log*xbar_women)
+
+b_women_log
+a_women_log
+```
+Re-written in linear form, our previous linear equations become:
+$$
+Y_{men} = 2.341 - 0.0038G
+$$
+$$
+Y_{women} = 2.452 - 0.0056G  
+$$
+$$
+2.341 - 0.0038G = 2.452 - 0.0056G
+$$
+Solving for $G$ here gives us the game number: **61.67**
+
+To convert game number to year, we can use: $1948 + (G-1) * 4 = Year$  
+
+Subbing in our $G$ value, we get: $1948 + (61.67 - 1) * 4 = 2190.68$, or Olympic year $2192$
+  
+  
+  (c) Show that the linear trend model predicts equal winning times of approximately 8.53 seconds.    
+    
+As we alread calculated the $G$ value (48.8) in part A for when the times converge, we can just plug that back into the original equation to get the exact winning time that year.  
+$Y_i = a + bG$  
+$Y_i = 10.386 - 0.038*48.8$  
+$Y_i = 8.5316$  
+    
+      
+(d) Comment on these outcomes and on the underlying regression models.    
+  
+  The nonlinear model gives different predictions in the long-run.
+  
+
+***     
+We can also construct a table with all of the predicted values from the time of our dataset (up to 2008), extending to 2200 to verify our results.
+```{r calculate predicted win times up to 2200, including time differences, echo = FALSE}
+Year_lm <- seq(2008, 2200, by = 4)
+Game_lm <- seq(from = 16, along.with = Year_lm)
+Winmen_lm <- a_men + (b_men*Game_lm)
+Winwomen_lm <- a_women + (b_women*Game_lm)
+
+predict_lm <- as.tibble(cbind(Game_lm, Year_lm, Winmen_lm, Winwomen_lm))
+```
+
+```{r find the year where the times are closes, echo = FALSE}
+Time_diff <- abs(predict_lm$Winmen_lm - predict_lm$Winwomen_lm)
+predict_lm <- cbind(predict_lm, Time_diff)
+predict_lm[which.min(predict_lm$Time_diff),]
+```
+
+```{r plot the predicted win times, echo = FALSE}
+#ideally, it would be better to have gather the data into a tidy, long format for the purposes of analysis and plotting, but to keep it simple for this exercise, and to keep the data frame or predicted values in a similar, comparable format, we will leave it as is.
+
+#the labels in this plot are also incorrect. 
+
+predict_lm %>% ggplot(aes(x = Year_lm, y= Winmen_lm)) + geom_line(color= "blue") + geom_line(data= predict_lm, aes(x= Year_lm, y= Winwomen_lm), color = "red")
+```
+
+***  
+  
+```{r calculate win times for men and women under non-linear trend, echo = FALSE}
+Winmen_lm_log <- exp(log(a_men) + ((b_men/10)*Game_lm))
+Winwomen_lm_log <- exp(log(a_women) + ((b_women/10)*Game_lm))
+Time_diff_log <- abs(Winmen_lm_log - Winwomen_lm_log)
+
+predict_lm <- cbind(predict_lm, Winmen_lm_log, Winwomen_lm_log, Time_diff_log)
+```
+
+Finally, we can have a look to see which games will have closest times in the non-linear model.  
+```{r show minimum under nonlinear, echo = FALSE}
+predict_lm[which.min(predict_lm$Time_diff_log),]
+```
+
+```{r plot the nonlinear model, echo =FALSE}
+predict_lm %>% ggplot(aes(x = Year_lm, y= Winmen_lm)) + geom_line(color= "blue") + geom_line(data= predict_lm, aes(x= Year_lm, y= Winwomen_lm_log), color = "red")
+```
+
+We can also compare the lines for the standard lm model and the non-linear version by plotting them side by side.  Here is how the trend differs for men.
+```{r lm men vs log men, echo =FALSE}
+predict_lm %>% ggplot(aes(x = Year_lm, y= Winmen_lm)) +
+  geom_line(color= "blue") + 
+  geom_line(data= predict_lm, aes(x= Year_lm, y= Winmen_lm_log), color = "blue4")
+```
+  
+Here is the side-by-side comparison for the women's predictions.
+```{r lm men vs log women, echo =FALSE}
+predict_lm %>% ggplot(aes(x = Year_lm, y= Winwomen_lm)) +
+  geom_line(color= "red") + 
+  geom_line(data= predict_lm, aes(x= Year_lm, y= Winwomen_lm_log), color = "red4")
+```
+
+***  
+  
+And here are the numbers for the standard linear model, using baseR to calculate:
+```{r run lm on Winmen, echo = FALSE}
+lm_men <- lm(Winmen~Game, data = TrainExer15)
+summary(lm_men)
+```
+
+```{r run lm on Winwomen, ECHO = FALSE}
+lm_women <- lm(Winwomen~Game, data = TrainExer15)
+summary(lm_women)
+```
+

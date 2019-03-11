@@ -1,0 +1,92 @@
+---
+title: 'Week 3: Model Specification, Training Exercises'
+author: "Anthony Nguyen"
+subtitle: <h3>Coursera/Erasmus U., Econometric Methods and Applications</h3>
+output:
+  pdf_document: default
+  html_document:
+    theme: cosmo
+---
+```{r load packages, include=FALSE}
+library(tidyverse)
+library(readxl)
+library(stargazer)
+library(cowplot)
+```
+
+```{r load data for exercise, include=FALSE}
+TrainExer31 <- read_excel("../../data/TrainExer 3-1.xlsx")
+
+```
+
+\makeatletter
+\g@addto@macro\bfseries{\boldmath}
+\makeatother
+
+#Training Exercise 3.1  
+
+##Notes:
+
+* This exercise uses the datafile `TrainExer31`and requires a computer.  
+* The dataset `TrainExer31` is [available on the website](https://d396qusza40orc.cloudfront.net/eureconometrics-assets/Dataset%20Files%20for%20On-Demand%20Course/Exercises%20and%20datasets/Module%203/TrainExer%203-1-corrected.txt).  
+  
+##Questions  
+  
+(a) Use dataset `TrainExer31` to regress the change in the log of the S&P500 index on a constant and the book-to-market ration, and check the result presented in Lecture 3.1 that:  
+$$
+\text{change in log(SP500 index)}= 0.177 - 0.213 \cdot \text{Book-to-market} + e
+$$
+
+(b) Now regress the S&P500 index (without any kind of transformation) on a constant and the book-to-market ratio.  Consider whether the effect of the book-to-market on the index is significant in this specification.  
+    
+(c) Make a plot of the residuals $e$ from both question (a) and (b) and comment on the difference. 
+  
+***
+\pagebreak  
+  
+##Answers
+
+### (a) Use dataset `TrainExer31` to regress the change in the log of the S&P500 index on a constant and the book-to-market ratio, and check the result presented in Lecture 3.1 that:  
+$$
+\text{change in log(SP500 index)}= 0.177 - 0.213 \cdot \text{Book-to-market} + e
+$$
+
+We need to be careful here, as the question is asking for the *change* in the log of the S&P500 index, not just the log. In `R` we can do this with the `diff()` function, being careful to pad by one row so that our vector is the same length as the rest of the dataframe:
+```{r take diff log of Index, echo=TRUE}
+
+#take log of Index variable
+TrainExer31 <- TrainExer31 %>% mutate(log_Index = log(Index))  
+  
+#take difference (change) of log of Index, adding NA to pad first row  
+TrainExer31 <- TrainExer31 %>% mutate(diff_log_Index = c(NA, diff(log_Index, lag=1)))
+```
+
+Now that we've calculated the change in the log of the Index, we can run the regression with our transformed y-variable:
+```{r regress log_Index~BookMarket, echo = TRUE}
+
+mod_difflog_Index_BookMarket <- lm(diff_log_Index~BookMarket, data = TrainExer31)
+
+summary(mod_difflog_Index_BookMarket)
+```
+  
+### (b) Now regress the S&P500 index (without any kind of transformation) on a constant and the book-to-market ratio. Consider whether the effect of the book-to-market on the index is significant in this specification.  
+
+```{r regress Index~BookMarket, echo = TRUE}
+
+mod_Index_BookMarket <- lm(Index~BookMarket, data = TrainExer31)
+
+summary(mod_Index_BookMarket)
+```
+Looking at the results of this regression, the effect of BookMarket on Index has a t-value of -8.075, and p-value that is significant at the 99% level.  
+  
+### (c) Make a plot of the residuals $e$ from both question (a) and (b) and comment on the difference.  
+
+```{r plot resideuals from both models, echo = TRUE}
+res_a <- qplot(mod_difflog_Index_BookMarket$residuals, xlab = "e, diff_log_Index~BookMarket")
+res_b <- qplot(mod_Index_BookMarket$residuals, xlab = "e, Index~BookMarket") 
+
+plot_grid(res_a, res_b)
+```  
+From the plot we can see that the distribution of the residuals from the two regressions have a very different distribution and use different scales. 
+  
+
